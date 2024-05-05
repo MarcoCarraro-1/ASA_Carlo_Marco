@@ -1,6 +1,7 @@
 import { default as config } from "./config.js";
 import { DeliverooApi, timer } from "@unitn-asa/deliveroo-js-client";
 import {default as createMap} from "./utils.js";
+import {shortestPath} from "./utils.js";
 
 const client = new DeliverooApi( config.host, config.token )
 client.onConnect( () => console.log( "socket", client.socket.id ) );
@@ -38,9 +39,6 @@ function manhattanDistance(pos1, pos2) {    //valuta la manhattan distance tra d
     return Math.abs(pos1.x - pos2.x) + Math.abs(pos1.y - pos2.y);
 }
 
-//let shortedP = shortestPath(myPos.x, myPos.y, closestDelCell.x, closestDelCell.y, map);
-//console.log("Shortest Path:");
-//shortestP.forEach(({ x, y }) => console.log(`(${x}, ${y})`));
 
 function delDistances(myPos, delCells){     //valuta la distanza tra posizione attuale e celle deliverabili indicando la più vicina
     delDists = manhattanDist(myPos, delCells)
@@ -97,7 +95,10 @@ client.onYou((info) => {
 client.onMap((width, height, tiles) => 
 {
     map = createMap(width, height, tiles); //map è globale
-    shortestPath()
+    console.log("Map:", map.length, " x ", map[0].length);
+    let shortestP = shortestPath(myPos.x, myPos.y, 9, 9, map);
+    console.log("Shortest Path:");
+    shortestP.forEach(({ x, y }) => console.log(`(${x}, ${y})`));
     //map = map.map(row => `[${row.join(', ')}]`).join(',\n'); //stampa la mappa in formato leggibile
     //console.log(`[\n${map}\n]`);
 

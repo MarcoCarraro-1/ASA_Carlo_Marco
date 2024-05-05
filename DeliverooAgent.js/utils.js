@@ -29,10 +29,10 @@ const dx = [-1, 1, 0, 0];
 const dy = [0, 0, -1, 1];
 
 // Define BFS function
-function shortestPath(startX, startY, endX, endY, map) {
-    const queue = [];
-    const visited = Array.from({ length: map.length }, () => Array(map[0].length).fill(false));
-    const prev = Array.from({ length: map.length }, () => Array(map[0].length));
+export function shortestPath(startX, startY, endX, endY, map) {
+    let queue = [];
+    let visited = Array.from({ length: map.length }, () => Array(map[0].length).fill(false));
+    let prev = Array.from({ length: map.length }, () => Array(map[0].length));
 
     // Push the starting point to the queue
     queue.push({ x: startX, y: startY });
