@@ -1,5 +1,6 @@
 import { default as config } from "./config.js";
 import { DeliverooApi, timer } from "@unitn-asa/deliveroo-js-client";
+import {default as createMap} from "./utils.js";
 
 const client = new DeliverooApi( config.host, config.token )
 client.onConnect( () => console.log( "socket", client.socket.id ) );
@@ -90,6 +91,7 @@ client.onYou((info) => {
 
 client.onMap((width, height, tiles) => 
 {
+    createMap(width, height, tiles);
     tiles.forEach(tile => {
         if(tile.delivery){
             let cell = { x: tile.x, y: tile.y};
