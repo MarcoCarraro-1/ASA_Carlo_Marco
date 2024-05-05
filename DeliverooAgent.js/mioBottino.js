@@ -16,6 +16,7 @@ let closestDelCell;     //cella deliverabile più vicina
 let closestParcel;      //cella con pacchetto libero più vicina
 let arrived = false;
 let nonCarriedParcels = [];
+let map = []
 
 /*client.onTile((x,y,delivery) => 
 {
@@ -36,6 +37,10 @@ function manhattanDist(pos, cells) {       //valuta la manhattan distance tra po
 function manhattanDistance(pos1, pos2) {    //valuta la manhattan distance tra due celle
     return Math.abs(pos1.x - pos2.x) + Math.abs(pos1.y - pos2.y);
 }
+
+//let shortedP = shortestPath(myPos.x, myPos.y, closestDelCell.x, closestDelCell.y, map);
+//console.log("Shortest Path:");
+//shortestP.forEach(({ x, y }) => console.log(`(${x}, ${y})`));
 
 function delDistances(myPos, delCells){     //valuta la distanza tra posizione attuale e celle deliverabili indicando la più vicina
     delDists = manhattanDist(myPos, delCells)
@@ -91,7 +96,11 @@ client.onYou((info) => {
 
 client.onMap((width, height, tiles) => 
 {
-    createMap(width, height, tiles);
+    map = createMap(width, height, tiles); //map è globale
+    shortestPath()
+    //map = map.map(row => `[${row.join(', ')}]`).join(',\n'); //stampa la mappa in formato leggibile
+    //console.log(`[\n${map}\n]`);
+
     tiles.forEach(tile => {
         if(tile.delivery){
             let cell = { x: tile.x, y: tile.y};
@@ -176,7 +185,6 @@ if (Math.abs(dy) > minDistance /*&& Number.isInteger(dy)*/) {
     }
 
     if(dx == 0 && dy == 0 /*&& where == "del"*/){
-        arrived = true;
         putdown();
     }
 }
