@@ -1,0 +1,17 @@
+{
+  "name": "play",
+  "version": "1.0.0",
+  "description": "A deliveroo.js client agent that plays using the DQN pre-trained model",
+  "type": "module",
+  "scripts": {
+    "start": "cp -r ../train/models/dqn . && node play.js"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@tensorflow/tfjs-node": "^3.18.0",
+    "@unitn-asa/deliveroo-js-client": "file:.yalc/@unitn-asa/deliveroo-js-client",
+    "canvas": "^2.11.2",
+    "socket.io-client": "^4.6.0"
+  }
+}
