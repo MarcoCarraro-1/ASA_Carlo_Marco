@@ -1,3 +1,7 @@
+let delDists = [];      //distanza da celle deliverabili
+let closestDelCell;     //cella deliverabile più vicina
+import { map, move, putdown } from "./mioBottino.js";
+
 function createMap (width, height, tiles) {
     let mappa = [];
 
@@ -22,14 +26,14 @@ function createMap (width, height, tiles) {
 
 export default createMap;
 
-// Sample map (matrix representation)
-
 // Define directions for movement: up, down, left, right
 const dx = [-1, 1, 0, 0];
 const dy = [0, 0, -1, 1];
 
 // Define BFS function
 export function shortestPath(startX, startY, endX, endY, map) {
+    startX = Math.floor(startX);
+    startY = Math.floor(startY);
     let queue = [];
     let visited = Array.from({ length: map.length }, () => Array(map[0].length).fill(false));
     let prev = Array.from({ length: map.length }, () => Array(map[0].length));
@@ -57,7 +61,6 @@ export function shortestPath(startX, startY, endX, endY, map) {
             shortestPath.unshift({ x: startX, y: startY });
             return shortestPath;
         }
-
         // Explore neighboring cells
         for (let i = 0; i < 4; i++) {
             const nx = x + dx[i];
@@ -76,4 +79,92 @@ export function shortestPath(startX, startY, endX, endY, map) {
     return null;
 }
 
+export function manhattanDist(pos, cells) {       //valuta la manhattan distance tra posizione attuale e insieme di celle
+    let distances = [];
 
+    cells.forEach(cell => {
+        let dist = Math.abs(pos.x - cell.x) + Math.abs(pos.y - cell.y);
+        distances.push(dist);
+    });
+
+    return distances;
+}
+
+export function manhattanDistance(pos1, pos2) {    //valuta la manhattan distance tra due celle
+    return Math.abs(pos1.x - pos2.x) + Math.abs(pos1.y - pos2.y);
+}
+
+export function delDistances(myPos, delCells){     //valuta la distanza tra posizione attuale e celle deliverabili indicando la più vicina
+    delDists = manhattanDist(myPos, delCells)
+    //console.log("Distances from delivery cells: ", delDists);
+    console.log("delDists: ", delDists);
+
+    let minDistance = Math.min(...delDists);
+    let closestCellIndex = delDists.indexOf(minDistance);
+    closestDelCell = delCells[closestCellIndex];
+    console.log("closestDelCell: ", closestDelCell);
+    closestDelCell.distance = minDistance;
+
+    console.log("Closest delivery cell position (x, y):", closestDelCell.x, ",", closestDelCell.y);
+    console.log("Distance to closest delivery cell:", closestDelCell.distance);
+}
+
+export function delivery(myPos){
+    let shortestP = shortestPath(myPos.x, myPos.y, closestDelCell.x, closestDelCell.y, map);
+    console.log("Shortest Path:");
+    shortestP.forEach(({ x, y }) => console.log(`(${x}, ${y})`));
+    let direction = nextMove(myPos,shortestP);
+    if(direction === 'same'){
+        putdown();
+    } else {
+        move(direction);
+    }
+}
+
+export function findClosestParcel(myPos, parcels) {    //valuta la distanza tra posizione attuale e pacchetto libero più vicino
+    if (parcels.length === 0) {
+        return null;
+    }
+
+    let closestParcel = parcels[0];
+    let closestDistance = manhattanDistance(myPos, { x: closestParcel.x, y: closestParcel.y });
+
+    for (let i = 1; i < parcels.length; i++) {
+        let distance = manhattanDistance(myPos, { x: parcels[i].x, y: parcels[i].y });
+        if (distance < closestDistance) {
+            closestParcel = parcels[i];
+            closestDistance = distance;
+        }
+    }
+
+    return closestParcel;
+}
+
+export function isDel(delCellsList, pos) {
+    for (let i = 0; i < delCellsLength; i++) {
+        if (delCellsList[i].x == pos.x && delCellsList[i].y == pos.y) {
+            return true; // Found a matching object
+        }
+    }
+    return false; // No matching object found
+}
+
+export function nextMove(myPos, shortestP){
+    console.log("Sono in:",myPos);
+    try{
+        const nextStep = shortestP[1];
+    
+        if (nextStep.x < myPos.x) {
+            return 'left';
+        } else if (nextStep.x > myPos.x) {
+            return 'right';
+        } else if (nextStep.y < myPos.y) {
+            return 'down';
+        } else if (nextStep.y > myPos.y) {
+            return 'up';
+        }
+    } catch (error) {
+        return 'same';
+    }
+    
+}
