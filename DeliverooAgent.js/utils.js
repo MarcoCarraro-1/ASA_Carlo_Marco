@@ -1,7 +1,7 @@
 let delDists = [];      //distanza da celle deliverabili
 let closestDelCell;     //cella deliverabile più vicina
 import { tradeOff } from "./intentions.js";
-import { map, move, putdown } from "./mioBottino.js";
+import { map, move, putdown, delCells } from "./mioBottino.js";
 let carriedPar = [];
 
 export function createMap (width, height, tiles) {
@@ -97,16 +97,17 @@ export function manhattanDistance(pos1, pos2) {    //valuta la manhattan distanc
 export function delDistances(myPos, delCells){     //valuta la distanza tra posizione attuale e celle deliverabili indicando la più vicina
     delDists = manhattanDist(myPos, delCells) //vettore di distanze
     //console.log("Distances from delivery cells: ", delDists);
-    //console.log("delDists: ", delDists);
+    console.log("delDists: ", delDists);
 
-    let minDistance = Math.min(...delDists);
-    let closestCellIndex = delDists.indexOf(minDistance);
-    closestDelCell = delCells[closestCellIndex];
-    //console.log("closestDelCell: ", closestDelCell);
-    closestDelCell.distance = minDistance;
+    let minDistance = Math.min(...delDists);let closestCellIndex = delDists.indexOf(minDistance); 
+    let closestDelCell = delCells[closestCellIndex];
+    console.log("closestDelCell: ", closestDelCell);
+    closestDelCell.distance = minDistance; //aggiungo il parametro distance all'oggetto closestDelCell se non ce l'ha
 
-    //console.log("Closest delivery cell position (x, y):", closestDelCell.x, ",", closestDelCell.y);
-    //console.log("Distance to closest delivery cell:", closestDelCell.distance);
+    console.log("Closest delivery cell position (x, y):", closestDelCell.x, ",", closestDelCell.y);
+    console.log("Distance to closest delivery cell:", closestDelCell.distance);
+
+    return closestDelCell;
 }
 
 
