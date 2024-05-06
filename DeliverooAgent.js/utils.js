@@ -135,7 +135,7 @@ export function findClosestParcel(myPos, parcels) {    //valuta la distanza tra 
     for (let i = 1; i < parcels.length; i++) {
         let distance = manhattanDistance(myPos, { x: parcels[i].x, y: parcels[i].y });
         let closestDelCellToPar = delDistances({x: parcels[i].x, y: parcels[i].y}, delCells);
-        if ((distance < closestDistance)&&(tradeOff(distance, closestDelCellToPar.distance, closestDelCell.distance, parcels[i].value, parcels[i].carriedBy) === true)) {
+        if ((distance < closestDistance)) {
             closestParcel = parcels[i];
             closestDistance = distance;
         }
