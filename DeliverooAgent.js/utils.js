@@ -1,6 +1,7 @@
 let delDists = [];      //distanza da celle deliverabili
 let closestDelCell;     //cella deliverabile più vicina
 import { map, move, putdown } from "./mioBottino.js";
+let carriedPar = [];
 
 export function createMap (width, height, tiles) {
     let mappa = [];
@@ -95,23 +96,23 @@ export function manhattanDistance(pos1, pos2) {    //valuta la manhattan distanc
 export function delDistances(myPos, delCells){     //valuta la distanza tra posizione attuale e celle deliverabili indicando la più vicina
     delDists = manhattanDist(myPos, delCells)
     //console.log("Distances from delivery cells: ", delDists);
-    console.log("delDists: ", delDists);
+    //console.log("delDists: ", delDists);
 
     let minDistance = Math.min(...delDists);
     let closestCellIndex = delDists.indexOf(minDistance);
     closestDelCell = delCells[closestCellIndex];
-    console.log("closestDelCell: ", closestDelCell);
+    //console.log("closestDelCell: ", closestDelCell);
     closestDelCell.distance = minDistance;
 
-    console.log("Closest delivery cell position (x, y):", closestDelCell.x, ",", closestDelCell.y);
-    console.log("Distance to closest delivery cell:", closestDelCell.distance);
+    //console.log("Closest delivery cell position (x, y):", closestDelCell.x, ",", closestDelCell.y);
+    //console.log("Distance to closest delivery cell:", closestDelCell.distance);
 }
 
 
 export function delivery(myPos){                   //calcola il percorso per arrivare alla delivery cell più vicina e muove l'agente
     let shortestPath = shortestPathBFS(myPos.x, myPos.y, closestDelCell.x, closestDelCell.y, map);
-    console.log("Shortest Path:");
-    shortestPath.forEach(({ x, y }) => console.log(`(${x}, ${y})`));
+    //console.log("Shortest Path:");
+    //shortestPath.forEach(({ x, y }) => console.log(`(${x}, ${y})`));
     let direction = nextMove(myPos,shortestPath);
     if(direction === 'same'){
         putdown();
@@ -150,7 +151,7 @@ export function isDel(delCellsList, pos) {
 }
 
 export function nextMove(myPos, shortestPath){
-    console.log("Sono in:",myPos);
+    //console.log("Sono in:",myPos);
     try{
         const nextStep = shortestPath[1]; //shortestPath[0] è la posizione attuale
     
@@ -166,4 +167,38 @@ export function nextMove(myPos, shortestPath){
     } catch (error) {
         return 'same';
     }
+}
+
+function isIdAlreadyPresent(id) {
+    return carriedPar.some(parcel => parcel.id === id);
+}
+
+export function updateCarriedPar(parcel){
+    if (!isIdAlreadyPresent(parcel.id)) {
+        carriedPar.push(parcel);
+    }
+}
+
+export function getCarriedPar(){
+    //console.log("STAMPO CARRIED PAR LENGTH: ", carriedPar.length);
+    for (const id of carriedPar){
+        console.log("id:",id);
+    }
+    return carriedPar.length;
+}
+
+export function getCarriedValue(){
+    let totalReward = 0;
+
+    for (const parcel of carriedPar) {
+        totalReward += parcel.reward;
+    }
+
+    return totalReward;
+}
+
+export function emptyCarriedPar(){
+    carriedPar = [];
+    //console.log("WE ARE CARRYING ", getCarriedPar(), " PARCELS");
+    //console.log("OUR TOTAL REWARD: ", getCarriedValue());
 }

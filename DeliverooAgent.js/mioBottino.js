@@ -1,7 +1,8 @@
 import { default as config } from "./config.js";
 import { DeliverooApi, timer } from "@unitn-asa/deliveroo-js-client";
 import {createMap, shortestPathBFS, manhattanDist, manhattanDistance, delDistances,
-        findClosestParcel, nextMove, delivery} from "./utils.js";
+        findClosestParcel, nextMove, delivery, updateCarriedPar,
+        getCarriedPar, getCarriedValue, emptyCarriedPar} from "./utils.js";
 
 const client = new DeliverooApi( config.host, config.token )
 client.onConnect( () => console.log( "socket", client.socket.id ) );
@@ -15,6 +16,8 @@ let closestParcel;      //cella con pacchetto libero più vicina
 let arrived = false;
 let nonCarriedParcels = [];
 export let map = [];
+let carriedParNumber;
+let carriedParValue;
 
 
 client.onYou((info) => {
@@ -29,6 +32,9 @@ client.onYou((info) => {
     for (const del of delCells) {
         if (del.x === myPos.x && del.y === myPos.y) {
             putdown();
+            emptyCarriedPar();
+            carriedParNumber = 0;
+            carriedParValue = 0;
         }
     }
 });
@@ -37,7 +43,7 @@ client.onYou((info) => {
 client.onMap((width, height, tiles) => 
 {
     map = createMap(width, height, tiles); //map è globale
-    console.log("Map:", map.length, " x ", map[0].length);
+    //console.log("Map:", map.length, " x ", map[0].length);
 
     tiles.forEach(tile => {
         if(tile.delivery){
@@ -55,26 +61,34 @@ client.onParcelsSensing( ( parcels ) =>
 
     if (nonCarriedParcels.length > 0) {
         closestParcel = findClosestParcel(myPos, nonCarriedParcels);
-        console.log("Closest parcel:", closestParcel);
+        //console.log("Closest parcel:", closestParcel);
         
         if (closestParcel !== null) {
             let shortestPath = shortestPathBFS(myPos.x, myPos.y, closestParcel.x, closestParcel.y, map);
-            console.log("Shortest Path:");
-            shortestPath.forEach(({ x, y }) => console.log(`(${x}, ${y})`));
+            //console.log("Shortest Path:");
+            //shortestPath.forEach(({ x, y }) => console.log(`(${x}, ${y})`));
             let direction = nextMove(myPos,shortestPath);
             if(direction === 'same'){
                 pickup();
+                updateCarriedPar(closestParcel);
+                carriedParNumber = getCarriedPar();
+                carriedParValue = getCarriedValue();
+                //console.log("WE ARE CARRYING: ", carriedParNumber, " PARCELS");
+                //console.log("OUR TOTAL REWARD: ", carriedParValue);
             } else {
                 move(direction);
             }
         }
     } else {
-        console.log("No parcel available");
+        //console.log("No parcel available");
         delDistances(myPos,delCells);
         delivery(myPos);
         //moveTowardsClosest(myPos, closestDelCell, "del");
         if(arrived){ 
             putdown();
+            emptyCarriedPar();
+            carriedParNumber = 0;
+            carriedParValue = 0;
             arrived = false;
         }
     }
