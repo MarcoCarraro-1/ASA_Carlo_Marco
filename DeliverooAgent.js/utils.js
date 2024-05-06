@@ -1,6 +1,6 @@
 let delDists = [];      //distanza da celle deliverabili
-let closestDelCell;     //cella deliverabile più vicina
-import { map, move, putdown } from "./mioBottino.js";
+import { tradeOff } from "./intentions.js";
+import { map, move, putdown, delCells } from "./mioBottino.js";
 
 export function createMap (width, height, tiles) {
     let mappa = [];
@@ -93,22 +93,25 @@ export function manhattanDistance(pos1, pos2) {    //valuta la manhattan distanc
 }
 
 export function delDistances(myPos, delCells){     //valuta la distanza tra posizione attuale e celle deliverabili indicando la più vicina
-    delDists = manhattanDist(myPos, delCells)
+    delDists = manhattanDist(myPos, delCells) //vettore di distanze
     //console.log("Distances from delivery cells: ", delDists);
     console.log("delDists: ", delDists);
 
     let minDistance = Math.min(...delDists);
-    let closestCellIndex = delDists.indexOf(minDistance);
-    closestDelCell = delCells[closestCellIndex];
+    let closestCellIndex = delDists.indexOf(minDistance); 
+    let closestDelCell = delCells[closestCellIndex];
     console.log("closestDelCell: ", closestDelCell);
-    closestDelCell.distance = minDistance;
+    closestDelCell.distance = minDistance; //aggiungo il parametro distance all'oggetto closestDelCell se non ce l'ha
 
     console.log("Closest delivery cell position (x, y):", closestDelCell.x, ",", closestDelCell.y);
     console.log("Distance to closest delivery cell:", closestDelCell.distance);
+
+    return closestDelCell;
 }
 
 
 export function delivery(myPos){                   //calcola il percorso per arrivare alla delivery cell più vicina e muove l'agente
+    let closestDelCell = delDistances(myPos, delCells);
     let shortestPath = shortestPathBFS(myPos.x, myPos.y, closestDelCell.x, closestDelCell.y, map);
     console.log("Shortest Path:");
     shortestPath.forEach(({ x, y }) => console.log(`(${x}, ${y})`));
@@ -124,14 +127,14 @@ export function findClosestParcel(myPos, parcels) {    //valuta la distanza tra 
     if (parcels.length === 0) {
         return null;
     }
-
+    let closestDelCell = delDistances(myPos, delCells);
     let closestParcel = parcels[0];
     let closestDistance = manhattanDistance(myPos, { x: closestParcel.x, y: closestParcel.y });
-
     // Trova la parcel più vicina nel vettore di parcel
     for (let i = 1; i < parcels.length; i++) {
         let distance = manhattanDistance(myPos, { x: parcels[i].x, y: parcels[i].y });
-        if (distance < closestDistance) {
+        let closestDelCellToPar = delDistances({x: parcels[i].x, y: parcels[i].y}, delCells);
+        if ((distance < closestDistance)&&(tradeOff(distance, closestDelCellToPar.distance, closestDelCell.distance, parcels[i].value, parcels[i].carriedBy) === true)) {
             closestParcel = parcels[i];
             closestDistance = distance;
         }

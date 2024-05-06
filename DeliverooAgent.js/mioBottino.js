@@ -9,11 +9,12 @@ client.onDisconnect( () => console.log( "disconnected", client.socket.id ) );
 
 //AGENT_OBSERVATION_DISTANCE = client.config.AGENT_OBSERVATION_DISTANCE;
 
-let delCells = [];      //celle deliverabili
+export let delCells = [];      //celle deliverabili
 let myPos = [];         //posizione attuale bot
 let closestParcel;      //cella con pacchetto libero più vicina
 let arrived = false;
 let nonCarriedParcels = [];
+let otherAgents = [];
 export let map = [];
 
 
@@ -24,7 +25,7 @@ client.onYou((info) => {
     //console.log("mypos: ", myPos.x, myPos.y);
     //console.log("Your position (x, y):", myPos);
     //console.log("Your score:", info.score);
-    delDistances(myPos, delCells);
+    //delDistances(myPos, delCells); //dopo aver cambiato delDistances non funziona più così
 
     for (const del of delCells) {
         if (del.x === myPos.x && del.y === myPos.y) {
@@ -33,6 +34,10 @@ client.onYou((info) => {
     }
 });
 
+client.onAgentsSensing((agents) => {
+    otherAgents = agents;
+    //console.log("Other agents:", otherAgents);
+})
 
 client.onMap((width, height, tiles) => 
 {
@@ -44,7 +49,7 @@ client.onMap((width, height, tiles) =>
             let cell = { x: tile.x, y: tile.y};
             delCells.push(cell); //vettore di celle deliverabili
         }
-    });
+    })
     
 })
 
@@ -70,9 +75,8 @@ client.onParcelsSensing( ( parcels ) =>
         }
     } else {
         console.log("No parcel available");
-        delDistances(myPos,delCells);
+        //delDistances(myPos,delCells);
         delivery(myPos);
-        //moveTowardsClosest(myPos, closestDelCell, "del");
         if(arrived){ 
             putdown();
             arrived = false;
