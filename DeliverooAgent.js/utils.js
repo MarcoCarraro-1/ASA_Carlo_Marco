@@ -2,7 +2,7 @@ let delDists = [];      //distanza da celle deliverabili
 let closestDelCell;     //cella deliverabile più vicina
 import { map, move, putdown } from "./mioBottino.js";
 
-function createMap (width, height, tiles) {
+export function createMap (width, height, tiles) {
     let mappa = [];
 
     for (let i = 0; i < height; i++) {
@@ -24,14 +24,12 @@ function createMap (width, height, tiles) {
     return mappa; 
 }
 
-export default createMap;
-
 // Define directions for movement: up, down, left, right
 const dx = [-1, 1, 0, 0];
 const dy = [0, 0, -1, 1];
 
 // Define BFS function
-export function shortestPath(startX, startY, endX, endY, map) {
+export function shortestPathBFS(startX, startY, endX, endY, map) {
     startX = Math.floor(startX);
     startY = Math.floor(startY);
     let queue = [];
@@ -109,11 +107,12 @@ export function delDistances(myPos, delCells){     //valuta la distanza tra posi
     console.log("Distance to closest delivery cell:", closestDelCell.distance);
 }
 
-export function delivery(myPos){
-    let shortestP = shortestPath(myPos.x, myPos.y, closestDelCell.x, closestDelCell.y, map);
+
+export function delivery(myPos){                   //calcola il percorso per arrivare alla delivery cell più vicina e muove l'agente
+    let shortestPath = shortestPathBFS(myPos.x, myPos.y, closestDelCell.x, closestDelCell.y, map);
     console.log("Shortest Path:");
-    shortestP.forEach(({ x, y }) => console.log(`(${x}, ${y})`));
-    let direction = nextMove(myPos,shortestP);
+    shortestPath.forEach(({ x, y }) => console.log(`(${x}, ${y})`));
+    let direction = nextMove(myPos,shortestPath);
     if(direction === 'same'){
         putdown();
     } else {
@@ -129,6 +128,7 @@ export function findClosestParcel(myPos, parcels) {    //valuta la distanza tra 
     let closestParcel = parcels[0];
     let closestDistance = manhattanDistance(myPos, { x: closestParcel.x, y: closestParcel.y });
 
+    // Trova la parcel più vicina nel vettore di parcel
     for (let i = 1; i < parcels.length; i++) {
         let distance = manhattanDistance(myPos, { x: parcels[i].x, y: parcels[i].y });
         if (distance < closestDistance) {
@@ -149,10 +149,10 @@ export function isDel(delCellsList, pos) {
     return false; // No matching object found
 }
 
-export function nextMove(myPos, shortestP){
+export function nextMove(myPos, shortestPath){
     console.log("Sono in:",myPos);
     try{
-        const nextStep = shortestP[1];
+        const nextStep = shortestPath[1]; //shortestPath[0] è la posizione attuale
     
         if (nextStep.x < myPos.x) {
             return 'left';
@@ -166,5 +166,4 @@ export function nextMove(myPos, shortestP){
     } catch (error) {
         return 'same';
     }
-    
 }

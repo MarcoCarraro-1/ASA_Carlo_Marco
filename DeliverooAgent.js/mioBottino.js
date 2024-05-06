@@ -1,7 +1,6 @@
 import { default as config } from "./config.js";
 import { DeliverooApi, timer } from "@unitn-asa/deliveroo-js-client";
-import {default as createMap} from "./utils.js";
-import {shortestPath, manhattanDist, manhattanDistance, delDistances,
+import {createMap, shortestPathBFS, manhattanDist, manhattanDistance, delDistances,
         findClosestParcel, nextMove, delivery} from "./utils.js";
 
 const client = new DeliverooApi( config.host, config.token )
@@ -11,7 +10,6 @@ client.onDisconnect( () => console.log( "disconnected", client.socket.id ) );
 //AGENT_OBSERVATION_DISTANCE = client.config.AGENT_OBSERVATION_DISTANCE;
 
 let delCells = [];      //celle deliverabili
-let delCellsLength = 0; //lunghezza delCells
 let myPos = [];         //posizione attuale bot
 let closestParcel;      //cella con pacchetto libero più vicina
 let arrived = false;
@@ -45,7 +43,6 @@ client.onMap((width, height, tiles) =>
         if(tile.delivery){
             let cell = { x: tile.x, y: tile.y};
             delCells.push(cell); //vettore di celle deliverabili
-            delCellsLength = delCellsLength + 1;
         }
     });
     
@@ -61,10 +58,10 @@ client.onParcelsSensing( ( parcels ) =>
         console.log("Closest parcel:", closestParcel);
         
         if (closestParcel !== null) {
-            let shortestP = shortestPath(myPos.x, myPos.y, closestParcel.x, closestParcel.y, map);
+            let shortestPath = shortestPathBFS(myPos.x, myPos.y, closestParcel.x, closestParcel.y, map);
             console.log("Shortest Path:");
-            shortestP.forEach(({ x, y }) => console.log(`(${x}, ${y})`));
-            let direction = nextMove(myPos,shortestP);
+            shortestPath.forEach(({ x, y }) => console.log(`(${x}, ${y})`));
+            let direction = nextMove(myPos,shortestPath);
             if(direction === 'same'){
                 pickup();
             } else {
@@ -106,6 +103,7 @@ export async function putdown (  )
     
 }
 
+/*
 async function moveTowardsClosest(myPos, closestCell, where) {
     let dx = closestCell.x - myPos.x;
     let dy = closestCell.y - myPos.y;
@@ -116,15 +114,16 @@ async function moveTowardsClosest(myPos, closestCell, where) {
         putdown();
     }
     
-    if (Math.abs(dx) > minDistance /*&& Number.isInteger(dx)*/) {
+    if (Math.abs(dx) > minDistance && Number.isInteger(dx)) {
         await move(dx > 0 ? 'right' : 'left');
     }
 
-if (Math.abs(dy) > minDistance /*&& Number.isInteger(dy)*/) {
+
+    if (Math.abs(dy) > minDistance && Number.isInteger(dy)) {
         await move(dy > 0 ? 'up' : 'down');
     }
 
-    if(dx == 0 && dy == 0 /*&& where == "del"*/){
+    if(dx == 0 && dy == 0 && where == "del"){
         putdown();
     }
-}
+}*/
