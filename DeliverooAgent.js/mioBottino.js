@@ -66,7 +66,7 @@ client.onParcelsSensing( ( parcels ) =>
 
     if (nonCarriedParcels.length > 0) {
         closestParcel = findClosestParcel(myPos, nonCarriedParcels);
-        //console.log("Closest parcel:", closestParcel);
+        console.log("Closest parcel:", closestParcel);
         
         if (closestParcel !== null) {
             let shortestPath = shortestPathBFS(myPos.x, myPos.y, closestParcel.x, closestParcel.y, map);
@@ -83,9 +83,18 @@ client.onParcelsSensing( ( parcels ) =>
             } else {
                 move(direction);
             }
+        } else {
+            delivery(myPos);
+            if(arrived){ 
+                putdown();
+                emptyCarriedPar();
+                carriedParNumber = 0;
+                carriedParValue = 0;
+                arrived = false;
+            }    
         }
     } else {
-        console.log("No parcel available");
+        //console.log("No parcel available");
         //delDistances(myPos,delCells);
         delivery(myPos);
         if(arrived){ 

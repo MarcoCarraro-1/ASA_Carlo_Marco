@@ -4,12 +4,18 @@ export function tradeOff (distanceToPar, distanceToDel, nearestDelDist, parcelVa
 {
     let rewordWhenPicked =  parcelVal - distanceToPar; //il valore della parcel quando viene presa 
                                                 //ipotizzando che ogni passo ci impieghi 1 secondo 
-    if(rewordWhenPicked <= 0)
+    if(rewordWhenPicked <= 0){
+        console.log("Rewardwhenpicked <0");
         return false;
+    }
+        
     let rewordWhenDelivered = rewordWhenPicked - distanceToDel; //il valore della parcel quando viene consegnata
                                                             //nella deliveryCell più vicina ad essa
-    if(rewordWhenDelivered <= 0)
+    if(rewordWhenDelivered <= 0){
+        console.log("Rewardwhendelivered <0");
         return false;         
+    }
+        
     let carriedParLoss = (carriedPar.length * (distanceToPar + distanceToDel)) - rewordWhenDelivered; //il valore perso per ogni parcel già trasportata
                                                                                 //se andiamo a prendere la parcel
     if(carriedParLoss < carriedPar.length * nearestDelDist)
