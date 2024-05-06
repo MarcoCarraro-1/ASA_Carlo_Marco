@@ -130,12 +130,12 @@ export function findClosestParcel(myPos, parcels) {    //valuta la distanza tra 
     }
     let closestDelCell = delDistances(myPos, delCells);
     let closestParcel = parcels[0];
-    let closestDistance = manhattanDistance(myPos, { x: closestParcel.x, y: closestParcel.y });
+    let closestDistance = shortestPathBFS(myPos.x, myPos.y, closestParcel.x, closestParcel.y, map).length;
     // Trova la parcel più vicina nel vettore di parcel
     for (let i = 1; i < parcels.length; i++) {
-        let distance = manhattanDistance(myPos, { x: parcels[i].x, y: parcels[i].y });
+        let distance = shortestPathBFS(myPos.x, myPos.y, parcels[i].x, parcels[i].y, map).length;
         let closestDelCellToPar = delDistances({x: parcels[i].x, y: parcels[i].y}, delCells);
-        if ((distance < closestDistance)) {
+        if ((distance < closestDistance)&&(tradeOff(distance, closestDelCellToPar.distance, closestDelCell.distance, parcels[i].reward, carriedPar))) {
             closestParcel = parcels[i];
             closestDistance = distance;
         }
