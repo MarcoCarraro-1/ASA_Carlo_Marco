@@ -1,6 +1,6 @@
-import { manhattanDistance } from "./utils";
+import { manhattanDistance } from "./utils.js"
 
-function tradeOff (distanceToPar, distanceToDel, nearestDelDist, parcelVal, carriedPar)
+export function tradeOff (distanceToPar, distanceToDel, nearestDelDist, parcelVal, carriedPar)
 {
     let rewordWhenPicked =  parcelVal - distanceToPar; //il valore della parcel quando viene presa 
                                                 //ipotizzando che ogni passo ci impieghi 1 secondo 
@@ -17,13 +17,17 @@ function tradeOff (distanceToPar, distanceToDel, nearestDelDist, parcelVal, carr
                 //perdita per consegnare quelle già trasportate, va a prenderla
 }
 
-function skipParcel(myPos, agentPos, parPos) //se un altro agente è più vicino alla parcel
+function iAmNearer(myPos, otherAgents, parcelPos) //se un altro agente è più vicino alla parcel
 {                                           //lascio perdere la parcel
-    let meToPar = manhattanDistance(myPos, parPos);
-    let agentToPar = manhattanDistance(agentPos, parPos);
-    if(meToPar < agentToPar)
-        return true;
-    return false;  
+
+    let meToParcel = manhattanDistance(myPos, parcelPos);
+    let minDistance = meToParcel;
+    otherAgents.forEach(agent => {
+        let agentPos = {x: agent.x, y: agent.y};
+        if(manhattanDistance(agentPos, parPos) < minDistance)
+            return false;
+        })  
+    return true;
 }
 
 
