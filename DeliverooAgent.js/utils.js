@@ -4,7 +4,8 @@ import { tradeOff } from "./intentions.js";
 import { map, move, putdown, delCells } from "./mioBottino.js";
 let carriedPar = [];
 
-export function createMap (width, height, tiles) {
+export function createMap (width, height, tiles) 
+{
     let mappa = [];
 
     for (let i = 0; i < height; i++) {
@@ -13,7 +14,7 @@ export function createMap (width, height, tiles) {
             mappa[i][j] = 0;
         }
     }
-    
+
     // Assegna i valori alle celle della mappa in base alla lista di oggetti
     tiles.forEach(obj => {
         const { x, y, delivery } = obj;
@@ -83,7 +84,7 @@ export function manhattanDist(pos, cells) {       //valuta la manhattan distance
     let distances = [];
 
     cells.forEach(cell => {
-        let dist = Math.abs(pos.x - cell.x) + Math.abs(pos.y - cell.y);
+        let dist = Math.abs(Math.round(pos.x) - Math.round(cell.x)) + Math.abs(Math.Round(pos.y) - Math.round(cell.y));
         distances.push(dist);
     });
 
@@ -112,7 +113,7 @@ export function delDistances(myPos, delCells){     //valuta la distanza tra posi
 }
 
 
-export function delivery(myPos){                   //calcola il percorso per arrivare alla delivery cell più vicina e muove l'agente
+export function delivery(myPos){      //calcola il percorso per arrivare alla delivery cell più vicina e muove l'agente
     let closestDelCell = delDistances(myPos, delCells);
     //console.log("distanza da mia posizione a celle deliverabili: ", delDists);
     let shortestPath = shortestPathBFS(myPos.x, myPos.y, closestDelCell.x, closestDelCell.y, map);
@@ -126,7 +127,8 @@ export function delivery(myPos){                   //calcola il percorso per arr
     }
 }
 
-export function findClosestParcel(myPos, parcels) {    //valuta la distanza tra posizione attuale e pacchetto libero più vicino
+export function findClosestParcel(myPos, parcels)  //valuta la distanza tra posizione attuale e pacchetto libero più vicino
+{   
     if (parcels.length === 0) {
         return null;
     }

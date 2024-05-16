@@ -64,23 +64,28 @@ client.onParcelsSensing( ( parcels ) =>
 {
     nonCarriedParcels = parcels.filter(parcel => parcel.carriedBy === null);
 
-    if (nonCarriedParcels.length > 0) {
+    if (nonCarriedParcels.length > 0) 
+    {
         closestParcel = findClosestParcel(myPos, nonCarriedParcels);
         console.log("Closest parcel:", closestParcel);
         
-        if (closestParcel !== null) {
+        if (closestParcel !== null) 
+        {
             let shortestPath = shortestPathBFS(myPos.x, myPos.y, closestParcel.x, closestParcel.y, map);
             //console.log("Shortest Path:");
             //shortestPath.forEach(({ x, y }) => console.log(`(${x}, ${y})`));
             let direction = nextMove(myPos,shortestPath);
-            if(direction === 'same'){
+            if(direction === 'same')
+            {
                 pickup();
                 updateCarriedPar(closestParcel);
                 carriedParNumber = getCarriedPar();
                 carriedParValue = getCarriedValue();
                 //console.log("WE ARE CARRYING: ", carriedParNumber, " PARCELS");
                 //console.log("OUR TOTAL REWARD: ", carriedParValue);
-            } else {
+            } 
+            else 
+            {
                 move(direction);
             }
         } else {
