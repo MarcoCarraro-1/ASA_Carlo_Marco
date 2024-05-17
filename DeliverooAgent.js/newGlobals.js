@@ -1,1 +1,2 @@
-export var myPos
+export var myPos 
+export var map

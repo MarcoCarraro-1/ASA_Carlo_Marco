@@ -1,9 +1,9 @@
-export function nextMove(myPos, path)
+export async function nextMove(myPos, path)
 {
     //console.log("Sono in:",myPos);
     try{
         const nextStep = path[1]; //path[0] è la posizione attuale
-    
+        var m= new Promise(res => {client.onYou(res)}) //questo + await m serve per aspettare di ricevere le nuove informazioni sulla tua posizione prima di muoverti
         if (nextStep.x < myPos.x) {
             return 'left';
         } else if (nextStep.x > myPos.x) {
@@ -13,22 +13,15 @@ export function nextMove(myPos, path)
         } else if (nextStep.y > myPos.y) {
             return 'up';
         }
+        await m
     } catch (error) {
         return 'same';
     }
 }
 
-export oneMovePick(){
+export async function oneMovePick(){
 client.onParcelsSensing( async ( parcels ) => 
     {
-        
-        const pretty = Array.from(parcels)
-            .map( ( {id,x,y,carriedBy,reward} ) => {
-                return reward; //`(${x},${y},${reward})`
-            } )
-            .join( ' ' )
-        console.log( pretty )
-    
         for(let p of parcels)
         {
             if(distance(p, me) == 1 && !p.carriedBy)
@@ -46,4 +39,15 @@ client.onParcelsSensing( async ( parcels ) =>
         }
     
     } )
+}
+
+export async function move ( direction ) 
+{
+    await client.move( direction ) 
+}
+
+export async function putdown (  ) 
+{
+    await client.putdown();
+    
 }
