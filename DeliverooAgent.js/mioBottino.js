@@ -3,6 +3,7 @@ import { DeliverooApi, timer } from "@unitn-asa/deliveroo-js-client";
 import {createMap, shortestPathBFS, manhattanDist, manhattanDistance, delDistances,
         findClosestParcel, nextMove, delivery, updateCarriedPar,
         getCarriedPar, getCarriedValue, emptyCarriedPar} from "./utils.js";
+import { iAmNearer } from "./intentions.js";
 
 const client = new DeliverooApi( config.host, config.token )
 client.onConnect( () => console.log( "socket", client.socket.id ) );
@@ -12,13 +13,19 @@ client.onDisconnect( () => console.log( "disconnected", client.socket.id ) );
 
 export let delCells = [];      //celle deliverabili
 let myPos = [];         //posizione attuale bot
-let closestParcel;      //cella con pacchetto libero più vicina
+var closestParcel;      //cella con pacchetto libero più vicina
+var targetParcel;       //cella con pacchetto obiettivo
 let arrived = false;
 let nonCarriedParcels = [];
 let otherAgents = [];
+let agentsCallback;
 export let map = [];
 let carriedParNumber;
 let carriedParValue;
+const directions = ['up', 'down', 'left', 'right'];
+var parcels;        //takes in consideration only available parcels
+var BFStoParcel;
+
 
 
 client.onYou((info) => {
@@ -26,23 +33,14 @@ client.onYou((info) => {
     //console.log("Your position (x, y):", info.x, ",", info.y);
     myPos = {x: info.x, y: info.y};
     //console.log("mypos: ", myPos.x, myPos.y);
-    //console.log("Your position (x, y):", myPos);
-    //console.log("Your score:", info.score);
-    //delDistances(myPos, delCells); //dopo aver cambiato delDistances non funziona più così
-
-    for (const del of delCells) {
-        if (del.x === myPos.x && del.y === myPos.y) {
-            putdown();
-            emptyCarriedPar();
-            carriedParNumber = 0;
-            carriedParValue = 0;
-        }
-    }
 });
 
 client.onAgentsSensing((agents) => {
     otherAgents = agents;
     //console.log("Other agents:", otherAgents);
+    if (agentsCallback) {
+        agentsCallback(agents);
+    }
 })
 
 client.onMap((width, height, tiles) => 
@@ -60,56 +58,13 @@ client.onMap((width, height, tiles) =>
 })
 
 
-client.onParcelsSensing( ( parcels ) =>
-{
-    nonCarriedParcels = parcels.filter(parcel => parcel.carriedBy === null);
-
-    if (nonCarriedParcels.length > 0) {
-        closestParcel = findClosestParcel(myPos, nonCarriedParcels);
-        console.log("Closest parcel:", closestParcel);
-        
-        if (closestParcel !== null) {
-            let shortestPath = shortestPathBFS(myPos.x, myPos.y, closestParcel.x, closestParcel.y, map);
-            //console.log("Shortest Path:");
-            //shortestPath.forEach(({ x, y }) => console.log(`(${x}, ${y})`));
-            let direction = nextMove(myPos,shortestPath);
-            if(direction === 'same'){
-                pickup();
-                updateCarriedPar(closestParcel);
-                carriedParNumber = getCarriedPar();
-                carriedParValue = getCarriedValue();
-                //console.log("WE ARE CARRYING: ", carriedParNumber, " PARCELS");
-                //console.log("OUR TOTAL REWARD: ", carriedParValue);
-            } else {
-                move(direction);
-            }
-        } else {
-            delivery(myPos);
-            if(arrived){ 
-                putdown();
-                emptyCarriedPar();
-                carriedParNumber = 0;
-                carriedParValue = 0;
-                arrived = false;
-            }    
-        }
-    } else {
-        //console.log("No parcel available");
-        //delDistances(myPos,delCells);
-        delivery(myPos);
-        if(arrived){ 
-            putdown();
-            emptyCarriedPar();
-            carriedParNumber = 0;
-            carriedParValue = 0;
-            arrived = false;
-        }
+client.onParcelsSensing((p)=> 
+    {
+        nonCarriedParcels = p.filter(parcel => parcel.carriedBy === null);
+        parcels=nonCarriedParcels;
     }
+)
 
-    //map = map.map(row => `[${row.join(', ')}]`).join(',\n'); //stampa la mappa in formato leggibile
-    //console.log(`[\n${map}\n]`);
-    
-})
 
 export async function move ( direction ) 
 {
@@ -124,11 +79,44 @@ async function pickup (  )
     }
 }
 
+
 export async function putdown (  ) 
 {
     await client.putdown();
     
 }
+
+function setAgentsCallback(callback) {
+    agentsCallback = callback;
+}
+
+
+async function agentLoop(){
+    //while(true){
+        while(parcels==undefined){
+            await timer( 20 );
+        }
+        //console.log(parcels);
+        while(parcels.length > 0 && targetParcel==null){
+            //console.log("Parcels available");
+            [closestParcel, BFStoParcel] = findClosestParcel(myPos, parcels);
+            //console.log("My path:",BFStoParcel);
+            setAgentsCallback((agents) => {
+                //console.log("Avversari in vista: ",otherAgents.length);
+            });
+
+            if(iAmNearer(otherAgents, closestParcel, BFStoParcel)){
+                console.log("Nearer to ", closestParcel);
+                targetParcel = closestParcel;
+            } else {
+                console.log("Opponent is a motherfucker! He'll steal ", closestParcel.id);
+                parcels = parcels.filter(parcel => parcel.id !== closestParcel.id);
+            }
+        }
+    //}
+}
+
+agentLoop();
 
 /*
 async function moveTowardsClosest(myPos, closestCell, where) {

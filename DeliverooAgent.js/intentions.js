@@ -1,18 +1,19 @@
-import { manhattanDistance } from "./utils.js"
+import { shortestPathBFS } from "./utils.js"
+import { map } from "./mioBottino.js"
 
 export function tradeOff (distanceToPar, distanceToDel, nearestDelDist, parcelVal, carriedPar)
 {
     let rewordWhenPicked =  parcelVal - distanceToPar; //il valore della parcel quando viene presa 
                                                 //ipotizzando che ogni passo ci impieghi 1 secondo 
     if(rewordWhenPicked <= 0){
-        console.log("Rewardwhenpicked <0");
+        //console.log("Rewardwhenpicked <0");
         return false;
     }
         
     let rewordWhenDelivered = rewordWhenPicked - distanceToDel; //il valore della parcel quando viene consegnata
                                                             //nella deliveryCell più vicina ad essa
     if(rewordWhenDelivered <= 0){
-        console.log("Rewardwhendelivered <0");
+        //console.log("Rewardwhendelivered <0");
         return false;         
     }
         
@@ -23,17 +24,19 @@ export function tradeOff (distanceToPar, distanceToDel, nearestDelDist, parcelVa
                 //perdita per consegnare quelle già trasportate, va a prenderla
 }
 
-function iAmNearer(myPos, otherAgents, parcelPos) //se un altro agente è più vicino alla parcel
+export function iAmNearer(otherAgents, parcel, BFStoParcel) //se un altro agente è più vicino alla parcel
 {                                           //lascio perdere la parcel
-
-    let meToParcel = manhattanDistance(myPos, parcelPos);
-    let minDistance = meToParcel;
+    let check = true;
+    let minDistance = BFStoParcel.length;
+    console.log("Competing for ", parcel,". I am at ", minDistance);
     otherAgents.forEach(agent => {
         let agentPos = {x: agent.x, y: agent.y};
-        if(manhattanDistance(agentPos, parPos) < minDistance)
-            return false;
-        })  
-    return true;
+        if(shortestPathBFS(agentPos.x, agentPos.y, parcel.x, parcel.y, map).length < minDistance){
+            check=false;
+        }
+    })
+
+    return check;
 }
 
 
