@@ -2,7 +2,8 @@ import { default as config } from "./config.js";
 import { DeliverooApi, timer } from "@unitn-asa/deliveroo-js-client";
 import {createMap, shortestPathBFS, manhattanDist, manhattanDistance, delDistances,
         findClosestParcel, nextMove, delivery, updateCarriedPar,
-        getCarriedPar, getCarriedValue, emptyCarriedPar} from "./utils.js";
+        getCarriedPar, getCarriedValue, emptyCarriedPar, moveTo, arrivedTarget,
+        setArrived} from "./utils.js";
 import { iAmNearer } from "./intentions.js";
 
 const client = new DeliverooApi( config.host, config.token )
@@ -15,10 +16,11 @@ export let delCells = [];      //celle deliverabili
 let myPos = [];         //posizione attuale bot
 var closestParcel;      //cella con pacchetto libero più vicina
 var targetParcel;       //cella con pacchetto obiettivo
-let arrived = false;
+var firstPath;          //path da seguire nel caso in cui non ci sia soluzione ottimale
 let nonCarriedParcels = [];
 let otherAgents = [];
 let agentsCallback;
+let parcelsCallback;
 export let map = [];
 let carriedParNumber;
 let carriedParValue;
@@ -58,12 +60,13 @@ client.onMap((width, height, tiles) =>
 })
 
 
-client.onParcelsSensing((p)=> 
-    {
-        nonCarriedParcels = p.filter(parcel => parcel.carriedBy === null);
-        parcels=nonCarriedParcels;
+client.onParcelsSensing((p)=> {
+    parcels = p.filter(parcel => parcel.carriedBy === null);
+    //parcels=nonCarriedParcels;
+    if (parcelsCallback) {
+        parcelsCallback(p);
     }
-)
+})
 
 
 export async function move ( direction ) 
@@ -90,30 +93,49 @@ function setAgentsCallback(callback) {
     agentsCallback = callback;
 }
 
+function setParcelsCallback(callback) {
+    parcelsCallback = callback;
+}
+
 
 async function agentLoop(){
-    //while(true){
-        while(parcels==undefined){
-            await timer( 20 );
-        }
-        //console.log(parcels);
-        while(parcels.length > 0 && targetParcel==null){
-            //console.log("Parcels available");
-            [closestParcel, BFStoParcel] = findClosestParcel(myPos, parcels);
-            //console.log("My path:",BFStoParcel);
-            setAgentsCallback((agents) => {
-                //console.log("Avversari in vista: ",otherAgents.length);
-            });
-
-            if(iAmNearer(otherAgents, closestParcel, BFStoParcel)){
-                console.log("Nearer to ", closestParcel);
-                targetParcel = closestParcel;
-            } else {
-                console.log("Opponent is a motherfucker! He'll steal ", closestParcel.id);
-                parcels = parcels.filter(parcel => parcel.id !== closestParcel.id);
+    while(true){
+        while(!arrivedTarget){
+            while(parcels==undefined){
+                await timer( 20 );
             }
+            
+            targetParcel = null;
+            while(parcels.length > 0 && targetParcel==null){
+                //console.log("Parcels available");
+                [closestParcel, BFStoParcel] = findClosestParcel(myPos, parcels);
+                if(firstPath==null){
+                    firstPath = BFStoParcel;
+                }
+                setAgentsCallback((agents) => {
+                    //console.log("Avversari in vista: ",otherAgents.length);
+                });
+
+                if(iAmNearer(otherAgents, closestParcel, BFStoParcel)){
+                    console.log("Nearer to ", closestParcel);
+                    targetParcel = closestParcel;
+                } else {
+                    console.log("Opponent is a motherfucker! He'll steal ", closestParcel.id);
+                    parcels = parcels.filter(parcel => parcel.id !== closestParcel.id);
+                }
+            }
+
+            if(targetParcel==null){
+                console.log("Opponent nearer to all parcels!");
+                BFStoParcel = firstPath;
+            }
+            moveTo(myPos,BFStoParcel);
+            await timer(500);
         }
-    //}
+        pickup();
+        await timer(200);
+        setArrived(false);
+    }
 }
 
 agentLoop();

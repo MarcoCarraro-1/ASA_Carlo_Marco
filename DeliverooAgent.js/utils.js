@@ -1,8 +1,9 @@
 let delDists = [];      //distanza da celle deliverabili
 let closestDelCell;     //cella deliverabile più vicina
 import { tradeOff } from "./intentions.js";
-import { map, move, putdown, delCells } from "./mioBottino.js";
+import { map, move, putdown, delCells} from "./mioBottino.js";
 let carriedPar = [];
+export let arrivedTarget = false;
 
 export function createMap (width, height, tiles) {
     let mappa = [];
@@ -181,6 +182,16 @@ export function nextMove(myPos, shortestPath){
     }
 }
 
+export function moveTo(myPos, path){
+    let direction = nextMove(myPos, path);
+    if(direction === 'same'){
+        arrivedTarget=true;
+        console.log("arrived:",arrivedTarget);
+    } else {
+        move(direction);
+    }
+}
+
 function isIdAlreadyPresent(id) {
     return carriedPar.some(parcel => parcel.id === id);
 }
@@ -213,4 +224,8 @@ export function emptyCarriedPar(){
     carriedPar = [];
     //console.log("WE ARE CARRYING ", getCarriedPar(), " PARCELS");
     //console.log("OUR TOTAL REWARD: ", getCarriedValue());
+}
+
+export function setArrived(cond){
+    arrivedTarget=cond;
 }
