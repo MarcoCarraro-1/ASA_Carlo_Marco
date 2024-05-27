@@ -3,7 +3,8 @@ import { DeliverooApi, timer } from "@unitn-asa/deliveroo-js-client";
 import {createMap, shortestPathBFS, manhattanDist, manhattanDistance, delDistances,
         findClosestParcel, nextMove, delivery, updateCarriedPar,
         getCarriedPar, getCarriedValue, emptyCarriedPar, moveTo, arrivedTarget,
-        setArrived} from "./utils.js";
+        setArrived, findClosestDelCell,
+        findFurtherPos} from "./utils.js";
 import { iAmNearer } from "./intentions.js";
 
 const client = new DeliverooApi( config.host, config.token )
@@ -17,6 +18,7 @@ let myPos = [];         //posizione attuale bot
 var closestParcel;      //cella con pacchetto libero più vicina
 var targetParcel;       //cella con pacchetto obiettivo
 var firstPath;          //path da seguire nel caso in cui non ci sia soluzione ottimale
+var closestDelCell;
 let nonCarriedParcels = [];
 let otherAgents = [];
 let agentsCallback;
@@ -27,14 +29,15 @@ let carriedParValue;
 const directions = ['up', 'down', 'left', 'right'];
 var parcels;        //takes in consideration only available parcels
 var BFStoParcel;
+var BFStoDel;
+var BFStoOpposite;
+let delivered=true;
+var opposite;
 
 
 
 client.onYou((info) => {
-    //console.log("Your name:", info.name);
-    //console.log("Your position (x, y):", info.x, ",", info.y);
     myPos = {x: info.x, y: info.y};
-    //console.log("mypos: ", myPos.x, myPos.y);
 });
 
 client.onAgentsSensing((agents) => {
@@ -48,7 +51,6 @@ client.onAgentsSensing((agents) => {
 client.onMap((width, height, tiles) => 
 {
     map = createMap(width, height, tiles); //map è globale
-    //console.log("Map:", map.length, " x ", map[0].length);
 
     tiles.forEach(tile => {
         if(tile.delivery){
@@ -62,7 +64,6 @@ client.onMap((width, height, tiles) =>
 
 client.onParcelsSensing((p)=> {
     parcels = p.filter(parcel => parcel.carriedBy === null);
-    //parcels=nonCarriedParcels;
     if (parcelsCallback) {
         parcelsCallback(p);
     }
@@ -104,10 +105,11 @@ async function agentLoop(){
             while(parcels==undefined){
                 await timer( 20 );
             }
-            
+            if(opposite==null){
+                opposite = {x:29-myPos.x, y:29-myPos.y};
+            }
             targetParcel = null;
             while(parcels.length > 0 && targetParcel==null){
-                //console.log("Parcels available");
                 [closestParcel, BFStoParcel] = findClosestParcel(myPos, parcels);
                 if(firstPath==null){
                     firstPath = BFStoParcel;
@@ -126,41 +128,36 @@ async function agentLoop(){
             }
 
             if(targetParcel==null){
-                console.log("Opponent nearer to all parcels!");
-                BFStoParcel = firstPath;
+                console.log("No target parcel!");
+                [closestDelCell, BFStoDel] = findClosestDelCell(myPos,delCells);
+                if(!delivered){
+                    console.log("Going to delivery!");
+                    moveTo(myPos,BFStoDel);
+                    await timer(500);
+                }else{
+                    putdown();
+                    delivered=true;
+                    console.log("Moving opposite!");
+                    [opposite, BFStoOpposite] = findFurtherPos(myPos,opposite);
+                    moveTo(myPos,BFStoOpposite);
+                    await timer(500);
+                }   
+            }else{
+                moveTo(myPos,BFStoParcel);
+                await timer(500);
             }
-            moveTo(myPos,BFStoParcel);
-            await timer(500);
         }
-        pickup();
+        if(delivered){
+            pickup();
+            delivered=false;
+        }else{
+            putdown();
+            delivered=true;
+        }
         await timer(200);
         setArrived(false);
+        opposite = {x:29-myPos.x, y:29-myPos.y};
     }
 }
 
 agentLoop();
-
-/*
-async function moveTowardsClosest(myPos, closestCell, where) {
-    let dx = closestCell.x - myPos.x;
-    let dy = closestCell.y - myPos.y;
-
-    const minDistance = 0.1;
-
-    if(isDel(delCells, myPos)){
-        putdown();
-    }
-    
-    if (Math.abs(dx) > minDistance && Number.isInteger(dx)) {
-        await move(dx > 0 ? 'right' : 'left');
-    }
-
-
-    if (Math.abs(dy) > minDistance && Number.isInteger(dy)) {
-        await move(dy > 0 ? 'up' : 'down');
-    }
-
-    if(dx == 0 && dy == 0 && where == "del"){
-        putdown();
-    }
-}*/

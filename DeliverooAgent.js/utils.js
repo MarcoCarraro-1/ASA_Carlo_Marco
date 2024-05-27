@@ -120,7 +120,6 @@ export function delDistances(myPos, delCells){     //valuta la distanza tra posi
 
 export function delivery(myPos){                   //calcola il percorso per arrivare alla delivery cell più vicina e muove l'agente
     closestDelCell = delDistances(myPos, delCells);
-    //console.log("distanza da mia posizione a celle deliverabili: ", delDists);
     let shortestPath = shortestPathBFS(myPos.x, myPos.y, closestDelCell.x, closestDelCell.y, map);
     //console.log("Shortest Path:");
     //shortestPath.forEach(({ x, y }) => console.log(`(${x}, ${y})`));
@@ -154,6 +153,43 @@ export function findClosestParcel(myPos, parcels) {    //valuta la distanza tra 
     return [parcel, finalPath];
 }
 
+export function findClosestDelCell(myPos, dellCells) {    //valuta la distanza tra posizione attuale e pacchetto libero più vicino
+    let delCell;
+    let closestDistance = 10000;
+    let finalPath;
+
+    if (!Array.isArray(dellCells)) {
+        delCells = [delCells];
+    }
+    
+    for (let i = 0; i < delCells.length; i++) {
+        let path = shortestPathBFS(myPos.x, myPos.y, delCells[i].x, delCells[i].y, map);
+        //console.log("Trovo questa distanza:",path.length);
+        if ((path.length < closestDistance)) {
+            delCell = delCells[i];
+            closestDistance = path.length;
+            finalPath = path;
+        }
+    }
+    
+    return [delCell, finalPath];
+}
+
+export function findFurtherPos(myPos, cells) {
+    let cell;
+    let finalPath;
+    let closestDistance = 10000;
+
+    let path = shortestPathBFS(Math.round(myPos.x), Math.round(myPos.y), cells.x, cells.y, map);
+    if ((path.length < closestDistance)) {
+        cell = cells;
+        closestDistance = path.length;
+        finalPath = path;
+    }
+
+    return [cell, finalPath];
+}
+
 export function isDel(delCellsList, pos) {
     for (let i = 0; i < delCellsLength; i++) {
         if (delCellsList[i].x == pos.x && delCellsList[i].y == pos.y) {
@@ -184,6 +220,7 @@ export function nextMove(myPos, shortestPath){
 
 export function moveTo(myPos, path){
     let direction = nextMove(myPos, path);
+    console.log("next dir:",direction);
     if(direction === 'same'){
         arrivedTarget=true;
         console.log("arrived:",arrivedTarget);
