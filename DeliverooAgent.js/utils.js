@@ -208,12 +208,12 @@ export function nextMove(myPos, shortestPath){
     }
 }
 
-export function moveTo(myPos, path){
+export async function moveTo(myPos, path){
     let direction = nextMove(myPos, path);
     if(direction === 'same'){
         arrivedTarget=true;
     } else {
-        move(direction);
+        await move(direction);
     }
 }
 
@@ -271,4 +271,23 @@ export function getMinCarriedValue(){
     }, Infinity);
     
     return minReward;
+}
+
+export function isAdjacentOrSame(pos1, pos2) {
+    const dx = Math.abs(pos1.x - pos2.x);
+    const dy = Math.abs(pos1.y - pos2.y);
+
+    return (dx === 0 && dy === 0) || (dx === 1 && dy === 0) || (dx === 0 && dy === 1) || (dx === 1 && dy === 1);
+}
+
+export function assignNewOpposite(myPos, mapLength) {
+    let newOpposite;
+    do {
+        newOpposite = { x: getRandomCoordinate(mapLength), y: getRandomCoordinate(mapLength) };
+    } while (isAdjacentOrSame(myPos, newOpposite));
+    return newOpposite;
+}
+
+function getRandomCoordinate(max) {
+    return Math.floor(Math.random() * max);
 }

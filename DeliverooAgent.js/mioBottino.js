@@ -7,7 +7,7 @@ import {createMap, shortestPathBFS, manhattanDist, manhattanDistance, delDistanc
         findFurtherPos,
         iAmOnDelCell,
         iAmOnParcel, setDelivered, delivered,
-        getMinCarriedValue} from "./utils.js";
+        getMinCarriedValue, isAdjacentOrSame, assignNewOpposite} from "./utils.js";
 import { iAmNearer } from "./intentions.js";
 
 const client = new DeliverooApi( config.host, config.token )
@@ -102,16 +102,18 @@ async function agentLoop(){
             while(parcels==undefined){
                 await timer( 20 );
             }
-
+            
             if(opposite==null){
-                opposite = {x:29-myPos.x, y:29-myPos.y};
+                opposite = {x:(map.length-1)-myPos.x, y:(map.length-1)-myPos.y};
+                if (isAdjacentOrSame(myPos, opposite)) {
+                    opposite = assignNewOpposite(myPos, map.length);
+                }
             }
             
             if(iAmOnDelCell(myPos)){
                 emptyCarriedPar();
                 setDelivered(true);
-                putdown();
-                await timer(200);
+                await putdown();
             }
             
             [closestDelCell, BFStoDel] = findClosestDelCell(myPos,delCells);
@@ -138,30 +140,25 @@ async function agentLoop(){
             if(targetParcel==null){
                 
                 if(!delivered){
-                    moveTo(myPos,BFStoDel);
-                    await timer(500);
+                    await moveTo(myPos,BFStoDel);
                 }else{
                     if(iAmOnDelCell(myPos)){
                         emptyCarriedPar();
                         setDelivered(true);
-                        putdown();
-                        await timer(200);
+                        await putdown();
                     }
                     [opposite, BFStoOpposite] = findFurtherPos(myPos,opposite);
-                    moveTo(myPos,BFStoOpposite);
-                    await timer(500);
+                    await moveTo(myPos,BFStoOpposite);
                 }
 
             }else{
 
                 if((BFStoDel.length<BFStoParcel.length || BFStoParcel.length>=getMinCarriedValue()) 
-                    && !delivered && getCarriedPar()!=0 
-                    && getCarriedPar()!=undefined){
-                    moveTo(myPos,BFStoDel);
-                    await timer(500);
+                && !delivered && getCarriedPar()!=0 
+                && getCarriedPar()!=undefined){
+                    await moveTo(myPos,BFStoDel);
                 } else {
-                    moveTo(myPos,BFStoParcel);
-                    await timer(500);
+                    await moveTo(myPos,BFStoParcel);
                 }
                 
             }
@@ -172,15 +169,18 @@ async function agentLoop(){
             await pickup();
             setDelivered(false);
             updateCarriedPar(targetParcel);
-            console.log("In testa ne go",getCarriedPar(), "totale:",getCarriedValue());
         }else if(iAmOnDelCell(myPos)){
+            await putdown();
             emptyCarriedPar();
             setDelivered(true);
-            putdown();
+        }
+        setArrived(false);
+        
+        opposite = {x:(map.length-1)-myPos.x, y:(map.length-1)-myPos.y};
+        if (isAdjacentOrSame(myPos, opposite)) {
+            opposite = assignNewOpposite(myPos, map.length);
         }
 
-        setArrived(false);
-        opposite = {x:29-myPos.x, y:29-myPos.y};
     }
 }
 
