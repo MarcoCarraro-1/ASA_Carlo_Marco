@@ -6,14 +6,13 @@ import {createMap, shortestPathBFS, manhattanDist, manhattanDistance, delDistanc
         setArrived, findClosestDelCell,
         findFurtherPos,
         iAmOnDelCell,
-        iAmOnParcel, setDelivered, delivered} from "./utils.js";
+        iAmOnParcel, setDelivered, delivered,
+        getMinCarriedValue} from "./utils.js";
 import { iAmNearer } from "./intentions.js";
 
 const client = new DeliverooApi( config.host, config.token )
 client.onConnect( () => console.log( "socket", client.socket.id ) );
 client.onDisconnect( () => console.log( "disconnected", client.socket.id ) );
-
-//AGENT_OBSERVATION_DISTANCE = client.config.AGENT_OBSERVATION_DISTANCE;
 
 export let delCells = [];      //celle deliverabili
 let myPos = [];         //posizione attuale bot
@@ -43,7 +42,7 @@ client.onYou((info) => {
 
 client.onAgentsSensing((agents) => {
     otherAgents = agents;
-    
+
     if (agentsCallback) {
         agentsCallback(agents);
     }
@@ -155,7 +154,9 @@ async function agentLoop(){
 
             }else{
 
-                if(BFStoDel.length<BFStoParcel.length && !delivered && getCarriedPar()!=0 && getCarriedPar()!=undefined){
+                if((BFStoDel.length<BFStoParcel.length || BFStoParcel.length>=getMinCarriedValue()) 
+                    && !delivered && getCarriedPar()!=0 
+                    && getCarriedPar()!=undefined){
                     moveTo(myPos,BFStoDel);
                     await timer(500);
                 } else {
@@ -171,6 +172,7 @@ async function agentLoop(){
             await pickup();
             setDelivered(false);
             updateCarriedPar(targetParcel);
+            console.log("In testa ne go",getCarriedPar(), "totale:",getCarriedValue());
         }else if(iAmOnDelCell(myPos)){
             emptyCarriedPar();
             setDelivered(true);

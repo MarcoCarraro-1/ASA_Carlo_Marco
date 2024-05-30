@@ -264,3 +264,11 @@ export function iAmOnParcel(myPos, parcels){
 export function setDelivered(cond){
     delivered=cond;
 }
+
+export function getMinCarriedValue(){
+    let minReward = carriedPar.reduce((min, parcel) => {
+        return parcel.reward < min ? parcel.reward : min;
+    }, Infinity);
+    
+    return minReward;
+}
