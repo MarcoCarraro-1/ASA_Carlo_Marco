@@ -43,7 +43,7 @@ client.onYou((info) => {
 
 client.onAgentsSensing((agents) => {
     otherAgents = agents;
-    //console.log("Other agents:", otherAgents);
+    
     if (agentsCallback) {
         agentsCallback(agents);
     }
@@ -78,11 +78,7 @@ export async function move ( direction )
 
 async function pickup (  ) 
 {
-    while(true)
-    {
-        await client.pickup();
-    }
-    
+    await client.pickup();
 }
 
 
@@ -99,13 +95,8 @@ function setAgentsCallback(callback) {
     agentsCallback = callback;
 }
 
-/*function setParcelsCallback(callback) {
-    parcelsCallback = callback;
-}*/
-
 
 async function agentLoop(){
-    //emptyCarriedPar();
     while(true){
         while(!arrivedTarget){
             
@@ -122,7 +113,6 @@ async function agentLoop(){
                 setDelivered(true);
                 putdown();
                 await timer(200);
-                console.log("1del:",delivered);
             }
             
             [closestDelCell, BFStoDel] = findClosestDelCell(myPos,delCells);
@@ -139,7 +129,6 @@ async function agentLoop(){
                 });
 
                 if(iAmNearer(otherAgents, closestParcel, BFStoParcel)){
-                    //console.log("Nearer to ", closestParcel);
                     targetParcel = closestParcel;
                 } else {
                     //console.log("Opponent is a motherfucker! He'll steal ", closestParcel.id);
@@ -150,7 +139,6 @@ async function agentLoop(){
             if(targetParcel==null){
                 
                 if(!delivered){
-                    //console.log("Going to delivery!");
                     moveTo(myPos,BFStoDel);
                     await timer(500);
                 }else{
@@ -160,7 +148,6 @@ async function agentLoop(){
                         putdown();
                         await timer(200);
                     }
-                    console.log("2del",delivered);
                     [opposite, BFStoOpposite] = findFurtherPos(myPos,opposite);
                     moveTo(myPos,BFStoOpposite);
                     await timer(500);
@@ -168,7 +155,7 @@ async function agentLoop(){
 
             }else{
 
-                if(BFStoDel.length<BFStoParcel.length && !delivered/*&& getCarriedPar()!=0 && getCarriedPar()!=undefined*/){
+                if(BFStoDel.length<BFStoParcel.length && !delivered && getCarriedPar()!=0 && getCarriedPar()!=undefined){
                     moveTo(myPos,BFStoDel);
                     await timer(500);
                 } else {
@@ -180,18 +167,14 @@ async function agentLoop(){
 
         }
 
-        if(delivered && iAmOnParcel(myPos, parcels)){
-            //updateCarriedPar(targetParcel);
+        if(iAmOnParcel(myPos, parcels)){
+            await pickup();
             setDelivered(false);
-            await timer(400);
-            pickup();
-            console.log("3del:",delivered);
+            updateCarriedPar(targetParcel);
         }else if(iAmOnDelCell(myPos)){
             emptyCarriedPar();
             setDelivered(true);
             putdown();
-            await timer(200);
-            console.log("4del:",delivered);
         }
 
         setArrived(false);
