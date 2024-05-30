@@ -2,8 +2,9 @@ let delDists = [];      //distanza da celle deliverabili
 let closestDelCell;     //cella deliverabile più vicina
 import { tradeOff } from "./intentions.js";
 import { map, move, putdown, delCells} from "./mioBottino.js";
-let carriedPar = [];
+var carriedPar = [];
 export let arrivedTarget = false;
+export let delivered = true;
 
 export function createMap (width, height, tiles) {
     let mappa = [];
@@ -200,7 +201,6 @@ export function isDel(delCellsList, pos) {
 }
 
 export function nextMove(myPos, shortestPath){
-    //console.log("Sono in:",myPos);
     try{
         const nextStep = shortestPath[1]; //shortestPath[0] è la posizione attuale
     
@@ -220,10 +220,8 @@ export function nextMove(myPos, shortestPath){
 
 export function moveTo(myPos, path){
     let direction = nextMove(myPos, path);
-    console.log("next dir:",direction);
     if(direction === 'same'){
         arrivedTarget=true;
-        console.log("arrived:",arrivedTarget);
     } else {
         move(direction);
     }
@@ -233,14 +231,15 @@ function isIdAlreadyPresent(id) {
     return carriedPar.some(parcel => parcel.id === id);
 }
 
-export function updateCarriedPar(parcel){
-    if (!isIdAlreadyPresent(parcel.id)) {
+export async function updateCarriedPar(parcel){
+    try{
         carriedPar.push(parcel);
+    } catch {
+        
     }
 }
 
 export function getCarriedPar(){
-    //console.log("STAMPO CARRIED PAR LENGTH: ", carriedPar.length);
     for (const id of carriedPar){
         console.log("id:",id);
     }
@@ -258,11 +257,26 @@ export function getCarriedValue(){
 }
 
 export function emptyCarriedPar(){
-    carriedPar = [];
-    //console.log("WE ARE CARRYING ", getCarriedPar(), " PARCELS");
-    //console.log("OUR TOTAL REWARD: ", getCarriedValue());
+    console.log("Svuoto");
+    carriedPar = null;
 }
 
 export function setArrived(cond){
     arrivedTarget=cond;
+}
+
+export function iAmOnDelCell(myPos){
+    let iAm = delCells.some(cell => cell.x === myPos.x && cell.y === myPos.y);
+    return iAm; 
+}
+
+export function iAmOnParcel(myPos, parcels){
+    //let iAm = delCells.some(cell => cell.x === myPos.x && cell.y === myPos.y);
+    let iAm = parcels.some(cell => cell.x === myPos.x && cell.y === myPos.y);
+    return iAm; 
+}
+
+export function setDelivered(cond){
+    console.log("Chiamo delivered: ", cond);
+    delivered=cond;
 }

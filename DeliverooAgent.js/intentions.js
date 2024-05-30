@@ -28,7 +28,7 @@ export function iAmNearer(otherAgents, parcel, BFStoParcel) //se un altro agente
 {                                           //lascio perdere la parcel
     let check = true;
     let minDistance = BFStoParcel.length;
-    console.log("Competing for ", parcel,". I am at ", minDistance);
+    //console.log("Competing for ", parcel,". I am at ", minDistance);
     otherAgents.forEach(agent => {
         let agentPos = {x: agent.x, y: agent.y};
         if(shortestPathBFS(agentPos.x, agentPos.y, parcel.x, parcel.y, map).length < minDistance){

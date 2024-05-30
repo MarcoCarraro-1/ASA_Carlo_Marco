@@ -4,7 +4,9 @@ import {createMap, shortestPathBFS, manhattanDist, manhattanDistance, delDistanc
         findClosestParcel, nextMove, delivery, updateCarriedPar,
         getCarriedPar, getCarriedValue, emptyCarriedPar, moveTo, arrivedTarget,
         setArrived, findClosestDelCell,
-        findFurtherPos} from "./utils.js";
+        findFurtherPos,
+        iAmOnDelCell,
+        iAmOnParcel, setDelivered, delivered} from "./utils.js";
 import { iAmNearer } from "./intentions.js";
 
 const client = new DeliverooApi( config.host, config.token )
@@ -31,7 +33,6 @@ var parcels;        //takes in consideration only available parcels
 var BFStoParcel;
 var BFStoDel;
 var BFStoOpposite;
-let delivered=true;
 var opposite;
 
 
@@ -81,80 +82,118 @@ async function pickup (  )
     {
         await client.pickup();
     }
+    
 }
 
 
 export async function putdown (  ) 
 {
     await client.putdown();
-    
+}
+
+async function callUpdatePar(parcel){
+    await updateCarriedPar(parcel);
 }
 
 function setAgentsCallback(callback) {
     agentsCallback = callback;
 }
 
-function setParcelsCallback(callback) {
+/*function setParcelsCallback(callback) {
     parcelsCallback = callback;
-}
+}*/
 
 
 async function agentLoop(){
+    //emptyCarriedPar();
     while(true){
         while(!arrivedTarget){
+            
             while(parcels==undefined){
                 await timer( 20 );
             }
+
             if(opposite==null){
                 opposite = {x:29-myPos.x, y:29-myPos.y};
             }
+            
+            if(iAmOnDelCell(myPos)){
+                emptyCarriedPar();
+                setDelivered(true);
+                putdown();
+                await timer(200);
+                console.log("1del:",delivered);
+            }
+            
+            [closestDelCell, BFStoDel] = findClosestDelCell(myPos,delCells);
             targetParcel = null;
             while(parcels.length > 0 && targetParcel==null){
                 [closestParcel, BFStoParcel] = findClosestParcel(myPos, parcels);
+                
                 if(firstPath==null){
                     firstPath = BFStoParcel;
                 }
+                
                 setAgentsCallback((agents) => {
                     //console.log("Avversari in vista: ",otherAgents.length);
                 });
 
                 if(iAmNearer(otherAgents, closestParcel, BFStoParcel)){
-                    console.log("Nearer to ", closestParcel);
+                    //console.log("Nearer to ", closestParcel);
                     targetParcel = closestParcel;
                 } else {
-                    console.log("Opponent is a motherfucker! He'll steal ", closestParcel.id);
+                    //console.log("Opponent is a motherfucker! He'll steal ", closestParcel.id);
                     parcels = parcels.filter(parcel => parcel.id !== closestParcel.id);
                 }
             }
 
             if(targetParcel==null){
-                console.log("No target parcel!");
-                [closestDelCell, BFStoDel] = findClosestDelCell(myPos,delCells);
+                
                 if(!delivered){
-                    console.log("Going to delivery!");
+                    //console.log("Going to delivery!");
                     moveTo(myPos,BFStoDel);
                     await timer(500);
                 }else{
-                    putdown();
-                    delivered=true;
-                    console.log("Moving opposite!");
+                    if(iAmOnDelCell(myPos)){
+                        emptyCarriedPar();
+                        setDelivered(true);
+                        putdown();
+                        await timer(200);
+                    }
+                    console.log("2del",delivered);
                     [opposite, BFStoOpposite] = findFurtherPos(myPos,opposite);
                     moveTo(myPos,BFStoOpposite);
                     await timer(500);
-                }   
+                }
+
             }else{
-                moveTo(myPos,BFStoParcel);
-                await timer(500);
+
+                if(BFStoDel.length<BFStoParcel.length && !delivered/*&& getCarriedPar()!=0 && getCarriedPar()!=undefined*/){
+                    moveTo(myPos,BFStoDel);
+                    await timer(500);
+                } else {
+                    moveTo(myPos,BFStoParcel);
+                    await timer(500);
+                }
+                
             }
+
         }
-        if(delivered){
+
+        if(delivered && iAmOnParcel(myPos, parcels)){
+            //updateCarriedPar(targetParcel);
+            setDelivered(false);
+            await timer(400);
             pickup();
-            delivered=false;
-        }else{
+            console.log("3del:",delivered);
+        }else if(iAmOnDelCell(myPos)){
+            emptyCarriedPar();
+            setDelivered(true);
             putdown();
-            delivered=true;
+            await timer(200);
+            console.log("4del:",delivered);
         }
-        await timer(200);
+
         setArrived(false);
         opposite = {x:29-myPos.x, y:29-myPos.y};
     }
