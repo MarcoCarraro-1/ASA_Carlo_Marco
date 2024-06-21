@@ -1,8 +1,10 @@
 let delDists = [];      //distanza da celle deliverabili
 let closestDelCell;     //cella deliverabile più vicina
 import { tradeOff } from "./intentions.js";
-import { map, move, putdown, delCells } from "./mioBottino.js";
-let carriedPar = [];
+import { map, move, putdown, delCells} from "./mioBottino.js";
+var carriedPar = [];
+export let arrivedTarget = false;
+export let delivered = true;
 
 export function createMap (width, height, tiles) 
 {
@@ -83,11 +85,14 @@ export function shortestPathBFS(startX, startY, endX, endY, map) {
 export function manhattanDist(pos, cells) {       //valuta la manhattan distance tra posizione attuale e insieme di celle
     let distances = [];
 
-    cells.forEach(cell => {
-        let dist = Math.abs(Math.round(pos.x) - Math.round(cell.x)) + Math.abs(Math.Round(pos.y) - Math.round(cell.y));
-        distances.push(dist);
-    });
-
+    try{
+        cells.forEach(cell => {
+            let dist = Math.abs(pos.x - cell.x) + Math.abs(pos.y - cell.y);
+            distances.push(dist);
+        });
+    } catch {
+        distances.push(10000);
+    }
     return distances;
 }
 
@@ -97,29 +102,20 @@ export function manhattanDistance(pos1, pos2) {    //valuta la manhattan distanc
 
 export function delDistances(myPos, delCells){     //valuta la distanza tra posizione attuale e celle deliverabili indicando la più vicina
     delDists = manhattanDist(myPos, delCells) //vettore di distanze
-    //console.log("Distances from delivery cells: ", delDists);
-    //console.log("delDists: ", delDists);
-
     let minDistance = Math.min(...delDists);
     let closestCellIndex = delDists.indexOf(minDistance); 
-    let closestDelCell = delCells[closestCellIndex];
+    closestDelCell = delCells[closestCellIndex];
     closestDelCell.distance = minDistance; //aggiungo il parametro distance all'oggetto closestDelCell se non ce l'ha
-    //console.log("closestDelCell: ", closestDelCell);
-
-    //console.log("Closest delivery cell position (x, y):", closestDelCell.x, ",", closestDelCell.y);
-    //console.log("Distance to closest delivery cell:", closestDelCell.distance);
 
     return closestDelCell;
 }
 
 
-export function delivery(myPos){      //calcola il percorso per arrivare alla delivery cell più vicina e muove l'agente
-    let closestDelCell = delDistances(myPos, delCells);
-    //console.log("distanza da mia posizione a celle deliverabili: ", delDists);
+export function delivery(myPos){                   //calcola il percorso per arrivare alla delivery cell più vicina e muove l'agente
+    closestDelCell = delDistances(myPos, delCells);
     let shortestPath = shortestPathBFS(myPos.x, myPos.y, closestDelCell.x, closestDelCell.y, map);
-    //console.log("Shortest Path:");
-    //shortestPath.forEach(({ x, y }) => console.log(`(${x}, ${y})`));
     let direction = nextMove(myPos,shortestPath);
+    
     if(direction === 'same'){
         putdown();
     } else {
@@ -127,31 +123,63 @@ export function delivery(myPos){      //calcola il percorso per arrivare alla de
     }
 }
 
-export function findClosestParcel(myPos, parcels)  //valuta la distanza tra posizione attuale e pacchetto libero più vicino
-{   
-    if (parcels.length === 0) {
-        return null;
+export function findClosestParcel(myPos, parcels) {    //valuta la distanza tra posizione attuale e pacchetto libero più vicino
+    let parcel;
+    let closestDistance = 10000;
+    let finalPath;
+
+    if (!Array.isArray(parcels)) {
+        parcels = [parcels];
     }
-
-
-    console.log("Cerco nuova closest parcel");
-
-    let closestDelCell = delDistances(myPos, delCells);
-    //console.log("distanza da mia posizione a celle deliverabili: ", delDists);
-    let closestParcel = parcels[0];
-    let closestDistance = shortestPathBFS(myPos.x, myPos.y, closestParcel.x, closestParcel.y, map).length;
-    // Trova la parcel più vicina nel vettore di parcel
-    for (let i = 1; i < parcels.length; i++) {
-        let distance = shortestPathBFS(myPos.x, myPos.y, parcels[i].x, parcels[i].y, map).length;
-        let closestDelCellToPar = delDistances({x: parcels[i].x, y: parcels[i].y}, delCells);
-        //console.log("distanza da closest parcel a celle deliverabili: ", delDists);
-        if ((distance < closestDistance)&&(tradeOff(distance, closestDelCellToPar.distance, closestDelCell.distance, parcels[i].reward, carriedPar))) {
-            closestParcel = parcels[i];
-            closestDistance = distance;
+    
+    for (let i = 0; i < parcels.length; i++) {
+        let path = shortestPathBFS(myPos.x, myPos.y, parcels[i].x, parcels[i].y, map);
+        
+        if ((path.length < closestDistance)) {
+            parcel = parcels[i];
+            closestDistance = path.length;
+            finalPath = path;
         }
     }
+    
+    return [parcel, finalPath];
+}
 
-    return closestParcel;
+export function findClosestDelCell(myPos, dellCells) {    //valuta la distanza tra posizione attuale e pacchetto libero più vicino
+    let delCell;
+    let closestDistance = 10000;
+    let finalPath;
+
+    if (!Array.isArray(dellCells)) {
+        delCells = [delCells];
+    }
+    
+    for (let i = 0; i < delCells.length; i++) {
+        let path = shortestPathBFS(myPos.x, myPos.y, delCells[i].x, delCells[i].y, map);
+        
+        if ((path.length < closestDistance)) {
+            delCell = delCells[i];
+            closestDistance = path.length;
+            finalPath = path;
+        }
+    }
+    
+    return [delCell, finalPath];
+}
+
+export function findFurtherPos(myPos, cells) {
+    let cell;
+    let finalPath;
+    let closestDistance = 10000;
+
+    let path = shortestPathBFS(Math.round(myPos.x), Math.round(myPos.y), cells.x, cells.y, map);
+    if ((path.length < closestDistance)) {
+        cell = cells;
+        closestDistance = path.length;
+        finalPath = path;
+    }
+
+    return [cell, finalPath];
 }
 
 export function isDel(delCellsList, pos) {
@@ -164,7 +192,6 @@ export function isDel(delCellsList, pos) {
 }
 
 export function nextMove(myPos, shortestPath){
-    //console.log("Sono in:",myPos);
     try{
         const nextStep = shortestPath[1]; //shortestPath[0] è la posizione attuale
     
@@ -182,21 +209,28 @@ export function nextMove(myPos, shortestPath){
     }
 }
 
+export async function moveTo(myPos, path){
+    let direction = nextMove(myPos, path);
+    if(direction === 'same'){
+        arrivedTarget=true;
+    } else {
+        await move(direction);
+    }
+}
+
 function isIdAlreadyPresent(id) {
     return carriedPar.some(parcel => parcel.id === id);
 }
 
-export function updateCarriedPar(parcel){
-    if (!isIdAlreadyPresent(parcel.id)) {
+export async function updateCarriedPar(parcel){
+    try{
         carriedPar.push(parcel);
+    } catch {
+        
     }
 }
 
 export function getCarriedPar(){
-    //console.log("STAMPO CARRIED PAR LENGTH: ", carriedPar.length);
-    for (const id of carriedPar){
-        console.log("id:",id);
-    }
     return carriedPar.length;
 }
 
@@ -212,6 +246,49 @@ export function getCarriedValue(){
 
 export function emptyCarriedPar(){
     carriedPar = [];
-    //console.log("WE ARE CARRYING ", getCarriedPar(), " PARCELS");
-    //console.log("OUR TOTAL REWARD: ", getCarriedValue());
+}
+
+export function setArrived(cond){
+    arrivedTarget=cond;
+}
+
+export function iAmOnDelCell(myPos){
+    let iAm = delCells.some(cell => cell.x === myPos.x && cell.y === myPos.y);
+    return iAm; 
+}
+
+export function iAmOnParcel(myPos, parcels){
+    let iAm = parcels.some(cell => cell.x === myPos.x && cell.y === myPos.y);
+    return iAm; 
+}
+
+export function setDelivered(cond){
+    delivered=cond;
+}
+
+export function getMinCarriedValue(){
+    let minReward = carriedPar.reduce((min, parcel) => {
+        return parcel.reward < min ? parcel.reward : min;
+    }, Infinity);
+    
+    return minReward;
+}
+
+export function isAdjacentOrSame(pos1, pos2) {
+    const dx = Math.abs(pos1.x - pos2.x);
+    const dy = Math.abs(pos1.y - pos2.y);
+
+    return (dx === 0 && dy === 0) || (dx === 1 && dy === 0) || (dx === 0 && dy === 1) || (dx === 1 && dy === 1);
+}
+
+export function assignNewOpposite(myPos, mapLength) {
+    let newOpposite;
+    do {
+        newOpposite = { x: getRandomCoordinate(mapLength), y: getRandomCoordinate(mapLength) };
+    } while (isAdjacentOrSame(myPos, newOpposite));
+    return newOpposite;
+}
+
+function getRandomCoordinate(max) {
+    return Math.floor(Math.random() * max);
 }
