@@ -67,12 +67,12 @@ class Agent {
     intention_queue = new Array();
 
     async intentionLoop ( ) {
-        while ( true ) {
+        while ( true ) { //questo while è non blocking perchè c'è await new Promise 
             const intention = this.intention_queue.shift();
             if ( intention )
-                await intention.achieve();
-            await new Promise( res => setImmediate( res ) );
-        }
+                await intention.achieve(); //questo postpone parte del codice
+            await new Promise( res => setImmediate( res ) ); //ogni volta che raggiungo quest aparte di codice postpongo il resto del codice alla prossima iterazione del node loop
+        }                                               //ogni volta che vengo qui lascio processare al node loop tutti gli input/output events (ad es perception)
     }
 
     async queue ( desire, ...args ) {
@@ -133,6 +133,22 @@ class Intention extends Promise {
 
     #started = false;
     async achieve () {
+        if(this.#started) return this;
+        this.#started = true;
+
+        //plan selection
+        let best_plan;
+        let best_plan_Score = Number.MIN_VALUE;
+        for (const plan of plans) {
+            if ( plan.isApplicableTo( this.#desire ) ) {
+                const score = plan.score( this.#desire, ...this.#args );
+                if ( score > best_plan_Score ) {
+                    this.#current_plan = plan;
+                    console.log('achieving desire: ', this.#desire, ...this.#args, 'with plan: ', plan)
+                }
+                await plan.execute(); //il metodo execute ritorna una promise. Achieve aspetta che la promise venga mantenuta
+            }
+        }
     }
 
 }

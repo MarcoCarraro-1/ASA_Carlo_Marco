@@ -6,7 +6,8 @@ var carriedPar = [];
 export let arrivedTarget = false;
 export let delivered = true;
 
-export function createMap (width, height, tiles) {
+export function createMap (width, height, tiles) 
+{
     let mappa = [];
 
     for (let i = 0; i < height; i++) {
@@ -15,7 +16,7 @@ export function createMap (width, height, tiles) {
             mappa[i][j] = 0;
         }
     }
-    
+
     // Assegna i valori alle celle della mappa in base alla lista di oggetti
     tiles.forEach(obj => {
         const { x, y, delivery } = obj;
