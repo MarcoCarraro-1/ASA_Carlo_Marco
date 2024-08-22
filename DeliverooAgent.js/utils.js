@@ -1,7 +1,7 @@
 let delDists = [];      //distanza da celle deliverabili
 let closestDelCell;     //cella deliverabile più vicina
 import { tradeOff } from "./intentions.js";
-import { map, move, putdown, delCells} from "./mioBottino.js";
+import { map, move, putdown, delCells, pickup} from "./mioBottino.js";
 var carriedPar = [];
 export let arrivedTarget = false;
 export let delivered = true;
@@ -274,10 +274,16 @@ export function getMinCarriedValue(){
 }
 
 export function isAdjacentOrSame(pos1, pos2) {
-    const dx = Math.abs(pos1.x - pos2.x);
-    const dy = Math.abs(pos1.y - pos2.y);
+    let dx = Math.abs(pos1.x - pos2.x);
+    let dy = Math.abs(pos1.y - pos2.y);
 
-    return (dx === 0 && dy === 0) || (dx === 1 && dy === 0) || (dx === 0 && dy === 1) || (dx === 1 && dy === 1);
+    if(dx <= 2 && dy <= 2){
+        return true;
+    } else {
+        return false;
+    }
+
+    //return (dx === 0 && dy === 0) || (dx === 1 && dy === 0) || (dx === 0 && dy === 1) || (dx === 1 && dy === 1);
 }
 
 export function assignNewOpposite(myPos, mapLength) {
@@ -290,4 +296,29 @@ export function assignNewOpposite(myPos, mapLength) {
 
 function getRandomCoordinate(max) {
     return Math.floor(Math.random() * max);
+}
+
+export async function executePddlAction(action) {
+    switch(action.action) {
+        case "right":
+            await move("right");
+            break;
+        case "left":
+            await move("left");
+            break;
+        case "up":
+            await move("up");
+            break;
+        case "down":
+            await move("down");
+            break;
+        case "pickup":
+            await pickup();
+            break;
+        case "putdown":
+            await putdown();
+            break;
+        default:
+            console.warn("Unknown PDDL action:", action.name);
+    }
 }
