@@ -28,7 +28,7 @@ client.onTile( ( x, y, delivery ) => {
 
 const me = {};
 
-await new Promise( res => {
+await new Promise( res => { //qua await serve perchè così aspetto che le mie info siano settate
     client.onYou( ( {id, name, x, y, score} ) => {
         me.id = id
         me.name = name
@@ -42,9 +42,24 @@ await new Promise( res => {
 
 
 
-const target_x = process.argv[2], target_y = process.argv[3];
-console.log('go from', me.x, me.y, 'to', target_x, target_y);
+const target ={
+    x : process.argv[2], 
+    y : process.argv[3]
+}
+console.log('go from', me.x, me.y, 'to', target.x, target.y);
 
-while ( me.x != target_x || me.y != target_y ) {
+
+while ( me.x != target.x || me.y != target.y ) //fa muovere l'agente a zig zag verso la parcel
+{
+    var m= new Promise(res => {client.onYou(res)}) //questo più await m serve per aspettare di ricevere le nuove informazioni sulla tua posizione prima di muoverti
+    if ( me.x < target.x )
+        await client.move('right')
+    else if ( me.x > target.x )
+        await client.move('left')
+    if ( me.y < target.y )
+        await client.move('up')
+    else if ( me.y > target_y )
+        await client.move('down')
+    await m   
 
 }
