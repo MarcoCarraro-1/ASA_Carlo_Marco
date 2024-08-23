@@ -323,3 +323,18 @@ export async function executePddlAction(action) {
             console.warn("Unknown PDDL action:", action.name);
     }
 }
+
+export function checkPos(x, y){
+    let newx = x;
+    let newy = y;
+    if (!Number.isInteger(x)) {
+        console.log("correggo x");
+        newx = Math.floor(x);
+    }
+    if (!Number.isInteger(y)) {
+        console.log("correggo y");
+        newy = Math.floor(y);
+    }
+
+    return { x: newx, y: newy };
+}

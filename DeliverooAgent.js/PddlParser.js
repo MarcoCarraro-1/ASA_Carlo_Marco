@@ -222,7 +222,6 @@ async function generatePlanWithPddl(parcels, agents, map, destinationTile, me, s
 
 
     if (!plan) {
-        console.log("GOOOOOOOOOOL",encodedGoal);
         console.log('ERROR GENERATING PLAN INSIDE PDDLParser.js');
     }
 
