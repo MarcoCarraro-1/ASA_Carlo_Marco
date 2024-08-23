@@ -283,8 +283,6 @@ export function isAdjacentOrSame(pos1, pos2) {
     } else {
         return false;
     }
-
-    //return (dx === 0 && dy === 0) || (dx === 1 && dy === 0) || (dx === 0 && dy === 1) || (dx === 1 && dy === 1);
 }
 
 export function assignNewOpposite(myPos, mapLength) {
@@ -328,11 +326,9 @@ export function checkPos(x, y){
     let newx = x;
     let newy = y;
     if (!Number.isInteger(x)) {
-        console.log("correggo x");
         newx = Math.floor(x);
     }
     if (!Number.isInteger(y)) {
-        console.log("correggo y");
         newy = Math.floor(y);
     }
 

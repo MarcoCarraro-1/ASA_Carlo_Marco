@@ -1,6 +1,5 @@
 export async function nextMove(myPos, path)
 {
-    //console.log("Sono in:",myPos);
     try{
         const nextStep = path[1]; //path[0] è la posizione attuale
         var m= new Promise(res => {client.onYou(res)}) //questo + await m serve per aspettare di ricevere le nuove informazioni sulla tua posizione prima di muoverti

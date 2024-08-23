@@ -1,7 +1,5 @@
 import fs from 'fs';
 import { PddlProblem, Beliefset, onlineSolver } from '@unitn-asa/pddl-client';
-//let doneTiles = false;
-//let beliefs;
 
 async function readDomain() {
     let domain = await new Promise((resolve, reject) => {
@@ -64,11 +62,11 @@ function assignTileType(beliefsSet, map) {
     const width = map[0].length;
     for (let i = 0; i < height; i++) {
         for (let j = 0; j < width; j++) {
-            if (map[i][j] === 0 /*&& i >= 0 && j >= 0*/) {
+            if (map[i][j] === 0) {
                 beliefsSet.declare(`wall tile_${i}-${j}`);
-            } else if (map[i][j] === 1 /*&& i >= 0 && j >= 0*/) {
+            } else if (map[i][j] === 1) {
                 beliefsSet.declare(`tile tile_${i}-${j}`);
-            } else if (map[i][j] === 2 /*&& i >= 0 && j >= 0*/) {
+            } else if (map[i][j] === 2) {
                 beliefsSet.declare(`tile tile_${i}-${j}`);
                 beliefsSet.declare(`delivery tile_${i}-${j}`);
             }
@@ -120,11 +118,7 @@ function specifyParcelsState(beliefsSet, parcels, me) {
             beliefsSet.declare(
                 `at parcel_${parcel.id} tile_${parcel.x}-${parcel.y}`
             );
-        } /*else {
-            beliefsSet.declare(
-                `carriedBy parcel_${parcel.id} me_${me.id}`
-            );
-        }*/
+        }
     }
 }
 
@@ -145,8 +139,6 @@ function specifyMyState(beliefsSet, me) {
 
 function specifyGoal(destinationTile, me, sit) {
     let goal = '';
-    console.log("Dest tile:", destinationTile);
-    console.log("Switcho sta sit:", sit);
     switch(sit){
         case "putdown":
             goal = `and (at parcel_${destinationTile.id} tile_${destinationTile.x}-${destinationTile.y}) (not (carriedBy parcel_${destinationTile.id} me_${me.id}))`;
@@ -158,11 +150,7 @@ function specifyGoal(destinationTile, me, sit) {
             goal = `at me_${me.id} tile_${destinationTile.x}-${destinationTile.y}`;
             break;
         case "toparcel":
-            //goal = `and (at me_${me.id} tile_${destinationTile.x}-${destinationTile.y})`;
-            //goal += `(carriedBy parcel_${destinationTile.id} me_${me.id})`;
             goal = `carriedBy parcel_${destinationTile.id} me_${me.id}`;
-            //goal = `at me_${me.id} tile_${destinationTile.x}-${destinationTile.y}`;
-            //goal = `at me_${me.id} tile_${me.x+1}-${me.y+1}`;
             break;
     }
 
@@ -189,14 +177,11 @@ async function generatePlanWithPddl(parcels, agents, map, destinationTile, me, s
     
 
     // specify the state of the objects
-    //specifyConnections(map, beliefs);
     specifyParcelsState(beliefs, parcels, me);
     specifyAgentsState(beliefs, agents);
     specifyMyState(beliefs, me);
     
     // final state declaration ((:goal) clouse in the PDDL problem file)
-    // goal could be defined as destinationTile = { x: 0, y: 0, parcelId: 234j23i}
-    //console.log("in parser", destinationTile, sit);
     let encodedGoal = specifyGoal(destinationTile, me, sit);
 
     //Create the PDDL problem (adapted from lab5)
@@ -210,7 +195,7 @@ async function generatePlanWithPddl(parcels, agents, map, destinationTile, me, s
     let domain = await readDomain();
     let encodedProblem = pddlProblem.toPddlString();
 
-    await saveToFile(encodedProblem); // helps to see if the problem is correctly defined
+    //await saveToFile(encodedProblem); // helps to see if the problem is correctly defined
 
     let plan;
 

@@ -153,7 +153,6 @@ function findTargetParcel_pddl(){
 
 async function agentLoop(){
     while(true){
-        console.log("ciao");
         while(parcels==undefined){
             await timer( 20 );
         }
@@ -161,7 +160,6 @@ async function agentLoop(){
         findTargetParcel();
         
         while(!arrivedTarget){
-            console.log("no arrived");
             while(parcels==undefined){
                 await timer( 20 );
             }
@@ -182,7 +180,6 @@ async function agentLoop(){
             findTargetParcel();
 
             if(targetParcel==null){
-                console.log("here error. no target. pos: ",myPos);
                 if(!delivered){
                     await moveTo(myPos,BFStoDel);
                 }else{
@@ -201,7 +198,6 @@ async function agentLoop(){
                 }
 
             }else{
-                console.log("here error. have target. pos:", myPos);
                 myPos = checkPos(myPos.x, myPos.y);
                 if((BFStoDel.length<BFStoParcel.length || BFStoParcel.length>=getMinCarriedValue()) 
                 && !delivered && getCarriedPar()!=0 
@@ -217,7 +213,6 @@ async function agentLoop(){
         }
 
         if(iAmOnParcel(myPos, parcels)){
-            console.log("on parcel");
             setDelivered(false);
             updateCarriedPar(targetParcel);
             await pickup();
