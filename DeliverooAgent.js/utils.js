@@ -5,7 +5,7 @@ import { map, move, putdown, delCells, pickup, client} from "./mioBottino.js";
 var carriedPar = [];
 export let arrivedTarget = false;
 export let delivered = true;
-let countAttempts = 0;
+export const counter = { countAttempts: 0};
 
 export function createMap (width, height, tiles) 
 {
@@ -163,8 +163,8 @@ export function findClosestDelCell(myPos, dellCells) {    //valuta la distanza t
     console.log("delCells:", delCells)
 
     for (let i = 0; i < delCells.length; i++) {
-        console.log("delcells[i].x", delCells[i].x);
-        console.log("delcells[i].y", delCells[i].y);
+        //console.log("delcells[i].x", delCells[i].x);
+        //console.log("delcells[i].y", delCells[i].y);
         let path = shortestPathBFS(myPos.x, myPos.y, delCells[i].x, delCells[i].y, map);
         
         try{
@@ -172,9 +172,9 @@ export function findClosestDelCell(myPos, dellCells) {    //valuta la distanza t
                 delCell = delCells[i];
                 closestDistance = path.length;
                 finalPath = path;
-                console.log("save del cell", delCell);
-                console.log("save closest distance", closestDistance);
-                console.log("save path", finalPath);
+                //console.log("save del cell", delCell);
+                //console.log("save closest distance", closestDistance);
+                //console.log("save path", finalPath);
             }
         } catch {
             console.log("No possible path to this del cell");
@@ -185,13 +185,13 @@ export function findClosestDelCell(myPos, dellCells) {    //valuta la distanza t
     return [delCell, finalPath];
 }
 
-function checkCondition(myPos, map, cells) {
+export function checkCondition(myPos, map, cells) {
     try {
         return map[cells.x][cells.y] != 1 || (cells.x == myPos.x && cells.y == myPos.y);
     } catch (error) {
         console.error("No possible to move in that cell");
-        countAttempts++;
-        console.log("Attempt",countAttempts);
+        counter.countAttempts++;
+        console.log("Attempt",counter.countAttempts);
         return true;
     }
 }
@@ -220,10 +220,10 @@ export function findFurtherPos(myPos, cells) {
 
         path = shortestPathBFS(Math.round(myPos.x), Math.round(myPos.y), cells.x, cells.y, map);
 
-        if(countAttempts>50){
+        if(counter.countAttempts>50){
             console.log("Forcing path");
             path = shortestPathBFS(Math.round(myPos.x), Math.round(myPos.y), Math.round(myPos.x), 0, map);
-            countAttempts=0;
+            counter.countAttempts=0;
         }
 
         
@@ -336,9 +336,14 @@ export function setDelivered(cond){
 }
 
 export function getMinCarriedValue(){
-    let minReward = carriedPar.reduce((min, parcel) => {
-        return parcel.reward < min ? parcel.reward : min;
-    }, Infinity);
+    let minReward;
+    try{
+        minReward = carriedPar.reduce((min, parcel) => {
+            return parcel.reward < min ? parcel.reward : min;
+        }, Infinity);
+    } catch {
+        return Infinity;
+    }
     
     return minReward;
 }
@@ -358,11 +363,19 @@ export function assignNewOpposite(myPos, mapLength) {
     let newOpposite;
     do {
         newOpposite = { x: getRandomCoordinate(mapLength), y: getRandomCoordinate(mapLength) };
-    } while (isAdjacentOrSame(myPos, newOpposite));
+        console.log("generating new opposite");
+
+        if(counter.countAttempts>50){
+            console.log("Forcing path");
+            newOpposite.x = myPos.x;
+            newOpposite.y = 0;
+            counter.countAttempts=0;
+        }
+    } while (isAdjacentOrSame(myPos, newOpposite) || checkCondition(myPos,map,newOpposite));
     return newOpposite;
 }
 
-function getRandomCoordinate(max) {
+export function getRandomCoordinate(max) {
     return Math.floor(Math.random() * max);
 }
 

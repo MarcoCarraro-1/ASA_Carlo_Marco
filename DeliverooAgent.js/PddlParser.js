@@ -153,7 +153,7 @@ function specifyGoal(destinationTile, me, sit) {
             goal = `carriedBy parcel_${destinationTile.id} me_${me.id}`;
             break;
     }
-
+    console.log("This goal:", goal);
     return goal;
 }
 
