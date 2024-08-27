@@ -3,11 +3,11 @@ import { DeliverooApi, timer } from "@unitn-asa/deliveroo-js-client";
 import {createMap, shortestPathBFS, manhattanDist, manhattanDistance, delDistances, findClosestParcel, nextMove, delivery, updateCarriedPar, 
         getCarriedPar, getCarriedValue, emptyCarriedPar, moveTo, arrivedTarget, setArrived, findClosestDelCell, findFurtherPos, iAmOnDelCell,
         iAmOnParcel, setDelivered, delivered, getMinCarriedValue, isAdjacentOrSame, assignNewOpposite, executePddlAction,
-        checkPos} from "./utils.js";
+        checkPos, assignOpposite} from "./utils.js";
 import { iAmNearer } from "./intentions.js";
 import { generatePlanWithPddl } from "./PddlParser.js";
 
-const client = new DeliverooApi( config.host, config.token )
+export const client = new DeliverooApi( config.host, config.token )
 client.onConnect( () => console.log( "socket", client.socket.id ) );
 client.onDisconnect( () => console.log( "disconnected", client.socket.id ) );
 
@@ -106,6 +106,10 @@ function findTargetParcel(){
     targetParcel = null;
     while(parcels.length > 0 && targetParcel==null){
         [closestParcel, BFStoParcel] = findClosestParcel(myPos, parcels);
+
+        if(closestParcel==null){
+            parcels.length=0;
+        }
                     
         if(firstPath==null){
             firstPath = BFStoParcel;
@@ -117,6 +121,7 @@ function findTargetParcel(){
 
         if(iAmNearer(otherAgents, closestParcel, BFStoParcel)){
             targetParcel = closestParcel;
+            console.log("target parcel:", targetParcel);
         } else {
             //console.log("Opponent will steal ", closestParcel.id);
             parcels = parcels.filter(parcel => parcel.id !== closestParcel.id);
@@ -156,8 +161,17 @@ async function agentLoop(){
         while(parcels==undefined){
             await timer( 20 );
         }
-            
-        findTargetParcel();
+        
+        if(targetParcel==null){
+            console.log("look for target");
+            console.log("here7");
+            findTargetParcel();
+        }
+
+        if(targetParcel==null){
+            console.log("NO TARGET PARCEL");
+        }
+        
         
         while(!arrivedTarget){
             while(parcels==undefined){
@@ -165,6 +179,7 @@ async function agentLoop(){
             }
             
             if(opposite==null){
+                opposite = assignOpposite(myPos, map);
                 opposite = {x:(map.length-1)-myPos.x, y:(map.length-1)-myPos.y};
                 if (isAdjacentOrSame(myPos, opposite)) {
                     opposite = assignNewOpposite(myPos, map.length);
@@ -174,54 +189,88 @@ async function agentLoop(){
             if(iAmOnDelCell(myPos)){
                 emptyCarriedPar();
                 setDelivered(true);
+                console.log("have to put");
                 await putdown();
+                await new Promise(resolve => setTimeout(resolve, 100));
+                console.log("done it");
             }
             
-            findTargetParcel();
+            console.log("look for target 2");
+            console.log("initial target:", targetParcel);
+            if(targetParcel==null){
+                findTargetParcel();
+            }
 
             if(targetParcel==null){
+                console.log("no target parcel");
                 if(!delivered){
+                    console.log("go to del subitooooo");
+                    myPos = checkPos(myPos.x, myPos.y);
                     await moveTo(myPos,BFStoDel);
                 }else{
+                    console.log("già deliveratoooooooo");
                     if(iAmOnDelCell(myPos)){
                         emptyCarriedPar();
                         setDelivered(true);
                         try{
+                            console.log("have to put2");
                             await putdown();
+                            await new Promise(resolve => setTimeout(resolve, 100));
                         } catch {
 
                         }
+                        console.log("have to put3");
                         await putdown();
+                        await new Promise(resolve => setTimeout(resolve, 200));
                     }
+                    opposite.x = Math.floor(opposite.x);
+                    opposite.y = Math.floor(opposite.y);
                     [opposite, BFStoOpposite] = findFurtherPos(myPos,opposite);
+                    console.log("here2");
+                    myPos = checkPos(myPos.x, myPos.y);
                     await moveTo(myPos,BFStoOpposite);
                 }
 
             }else{
+                console.log("yes target");
                 myPos = checkPos(myPos.x, myPos.y);
                 if((BFStoDel.length<BFStoParcel.length || BFStoParcel.length>=getMinCarriedValue()) 
                 && !delivered && getCarriedPar()!=0 
                 && getCarriedPar()!=undefined){
+                    console.log("go to del");
                     await moveTo(myPos,BFStoDel);
                 } else {
-                    await moveTo(myPos,BFStoParcel);
-                    
+                    console.log("go to par");
+                    console.log("bfstoparcel:",BFStoParcel);
+                    try{
+                        await moveTo(myPos,BFStoParcel);
+                        console.log("moved");
+                    }catch{
+                        console.log("error in moving");
+                    }
                 }
                 
             }
-
+            console.log("checking arrived:",arrivedTarget);
         }
+
+        
 
         if(iAmOnParcel(myPos, parcels)){
             setDelivered(false);
             updateCarriedPar(targetParcel);
+            console.log("here5");
             await pickup();
         }else if(iAmOnDelCell(myPos)){
+            console.log("have to put4");
             await putdown();
+            await new Promise(resolve => setTimeout(resolve, 100));
             emptyCarriedPar();
             setDelivered(true);
         }
         setArrived(false);
+        targetParcel=null;
+        //console.log("SETTO A FALSEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE");
         
         opposite = {x:(map.length-1)-myPos.x, y:(map.length-1)-myPos.y};
         if (isAdjacentOrSame(myPos, opposite)) {

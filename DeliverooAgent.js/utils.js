@@ -1,10 +1,11 @@
 let delDists = [];      //distanza da celle deliverabili
 let closestDelCell;     //cella deliverabile più vicina
 import { tradeOff } from "./intentions.js";
-import { map, move, putdown, delCells, pickup} from "./mioBottino.js";
+import { map, move, putdown, delCells, pickup, client} from "./mioBottino.js";
 var carriedPar = [];
 export let arrivedTarget = false;
 export let delivered = true;
+let countAttempts = 0;
 
 export function createMap (width, height, tiles) 
 {
@@ -25,7 +26,6 @@ export function createMap (width, height, tiles)
         }
     });
     
-    // Stampa la mappa risultante
     return mappa; 
 }
 
@@ -70,7 +70,7 @@ export function shortestPathBFS(startX, startY, endX, endY, map) {
             const ny = y + dy[i];
 
             // Check if the neighboring cell is within bounds and not visited
-            if (nx >= 0 && nx < map.length && ny >= 0 && ny < map[0].length && !visited[nx][ny] && map[nx][ny] !== 0) {
+            if (nx >= 0 && nx < map.length && ny >= 0 && ny < map[0].length && !visited[nx][ny] && map[nx][ny] !== 0 && map[nx][ny] !== undefined) {
                 queue.push({ x: nx, y: ny });
                 visited[nx][ny] = true;
                 prev[nx][ny] = { prevX: x, prevY: y };
@@ -124,23 +124,29 @@ export function delivery(myPos){                   //calcola il percorso per arr
 }
 
 export function findClosestParcel(myPos, parcels) {    //valuta la distanza tra posizione attuale e pacchetto libero più vicino
-    let parcel;
+    let parcel = null;
     let closestDistance = 10000;
-    let finalPath;
+    let finalPath = null;
 
     if (!Array.isArray(parcels)) {
         parcels = [parcels];
     }
     
     for (let i = 0; i < parcels.length; i++) {
-        let path = shortestPathBFS(myPos.x, myPos.y, parcels[i].x, parcels[i].y, map);
+        try{
+            let path = shortestPathBFS(myPos.x, myPos.y, parcels[i].x, parcels[i].y, map);
         
-        if ((path.length < closestDistance)) {
-            parcel = parcels[i];
-            closestDistance = path.length;
-            finalPath = path;
+            if ((path.length < closestDistance)) {
+                parcel = parcels[i];
+                closestDistance = path.length;
+                finalPath = path;
+            }
+        } catch {
+            console.log("This parcel is not reachable");
         }
     }
+
+    console.log("Cicle end in findClosestPar");
     
     return [parcel, finalPath];
 }
@@ -154,25 +160,77 @@ export function findClosestDelCell(myPos, dellCells) {    //valuta la distanza t
         delCells = [delCells];
     }
     
+    console.log("delCells:", delCells)
+
     for (let i = 0; i < delCells.length; i++) {
+        console.log("delcells[i].x", delCells[i].x);
+        console.log("delcells[i].y", delCells[i].y);
         let path = shortestPathBFS(myPos.x, myPos.y, delCells[i].x, delCells[i].y, map);
         
-        if ((path.length < closestDistance)) {
-            delCell = delCells[i];
-            closestDistance = path.length;
-            finalPath = path;
+        try{
+            if ((path.length < closestDistance)) {
+                delCell = delCells[i];
+                closestDistance = path.length;
+                finalPath = path;
+                console.log("save del cell", delCell);
+                console.log("save closest distance", closestDistance);
+                console.log("save path", finalPath);
+            }
+        } catch {
+            console.log("No possible path to this del cell");
         }
+        
     }
     
     return [delCell, finalPath];
+}
+
+function checkCondition(myPos, map, cells) {
+    try {
+        return map[cells.x][cells.y] != 1 || (cells.x == myPos.x && cells.y == myPos.y);
+    } catch (error) {
+        console.error("No possible to move in that cell");
+        countAttempts++;
+        console.log("Attempt",countAttempts);
+        return true;
+    }
 }
 
 export function findFurtherPos(myPos, cells) {
     let cell;
     let finalPath;
     let closestDistance = 10000;
+    let path = null;
 
-    let path = shortestPathBFS(Math.round(myPos.x), Math.round(myPos.y), cells.x, cells.y, map);
+    cells.x = Math.floor(cells.x);
+    cells.y = Math.floor(cells.y);
+
+    while(checkCondition(myPos, map, cells) || path==null){
+        //console.log("map[",cells.x,"][",cells.y,"]=",map[cells.x][cells.y]);
+        cells.x--;
+        cells.y--;
+        
+        if(cells.x<0){
+            cells.x = map.length;
+        }
+        
+        if(cells.y<0){
+            cells.y = map[0].length;
+        }
+
+        path = shortestPathBFS(Math.round(myPos.x), Math.round(myPos.y), cells.x, cells.y, map);
+
+        if(countAttempts>50){
+            console.log("Forcing path");
+            path = shortestPathBFS(Math.round(myPos.x), Math.round(myPos.y), Math.round(myPos.x), 0, map);
+            countAttempts=0;
+        }
+
+        
+    }
+
+    
+    
     if ((path.length < closestDistance)) {
         cell = cells;
         closestDistance = path.length;
@@ -192,9 +250,10 @@ export function isDel(delCellsList, pos) {
 }
 
 export function nextMove(myPos, shortestPath){
+    shortestPath.shift();
     try{
-        const nextStep = shortestPath[1]; //shortestPath[0] è la posizione attuale
-    
+        const nextStep = shortestPath[0]; //shortestPath[0] è la posizione attuale
+        console.log("next step in nextMove:",nextStep);
         if (nextStep.x < myPos.x) {
             return 'left';
         } else if (nextStep.x > myPos.x) {
@@ -210,8 +269,18 @@ export function nextMove(myPos, shortestPath){
 }
 
 export async function moveTo(myPos, path){
+    console.log("myPos in moveTo",myPos);
+    console.log("path in moveTo", path);
+    if(path[1]==myPos){
+        path.shift();
+    }
     let direction = nextMove(myPos, path);
-    if(direction === 'same'){
+    console.log("next dir: ", direction);
+    console.log("myPos", myPos);
+    client.onYou;
+    console.log("myPos new", myPos);
+    if(direction === 'same' || direction === undefined){
+        //console.log("arrivatooooooooooooooooooooooooooooo");
         arrivedTarget=true;
     } else {
         await move(direction);
@@ -333,4 +402,36 @@ export function checkPos(x, y){
     }
 
     return { x: newx, y: newy };
+}
+
+export function assignOpposite(myPos, map){
+    const maxX = map.length - 1; // Dimensione massima asse x
+    const maxY = map[0].length - 1; // Dimensione massima asse y
+
+    // Direzione opposta rispetto alla posizione corrente
+    const directionX = myPos.x > maxX / 2 ? -1 : 1;
+    const directionY = myPos.y > maxY / 2 ? -1 : 1;
+
+    // Proviamo a muoverci lungo l'asse x
+    let newX = myPos.x + directionX;
+    if (newX >= 0 && newX <= maxX && map[newX][myPos.y] === 1) {
+        return { x: newX, y: myPos.y };
+    }
+
+    // Proviamo a muoverci lungo l'asse y
+    let newY = myPos.y + directionY;
+    if (newY >= 0 && newY <= maxY && map[myPos.x][newY] === 1) {
+        return { x: myPos.x, y: newY };
+    }
+
+    // Se non abbiamo trovato nulla nei passi precedenti, proviamo combinazioni
+    newX = myPos.x + directionX;
+    newY = myPos.y + directionY;
+
+    if (newX >= 0 && newX <= maxX && newY >= 0 && newY <= maxY && map[newX][newY] === 1) {
+        return { x: newX, y: newY };
+    }
+
+    // Se nessuna delle precedenti opzioni ha funzionato, ritorna la posizione attuale
+    return myPos;
 }
