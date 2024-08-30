@@ -1,6 +1,5 @@
 let delDists = [];      //distanza da celle deliverabili
 let closestDelCell;     //cella deliverabile più vicina
-import { tradeOff } from "./intentions_beta.js";
 import { map, move, putdown, delCells, pickup, client} from "./doubleAgentBeta.js";
 var carriedPar = [];
 export let arrivedTarget = false;

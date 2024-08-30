@@ -1,20 +1,20 @@
 let delDists = [];      //distanza da celle deliverabili
 let closestDelCell;     //cella deliverabile più vicina
 import { tradeOff } from "./intentions_alfa.js";
-import { map, move, putdown, delCells, pickup, client} from "./doubleAgentAlfa.js";
+import {move, putdown, pickup, client, say} from "./doubleAgentAlfa.js";
+import {DEL_CELLS, MAP, ARRIVED_TO_TARGET, DELIVERED, BETA_ID, BETA_NAME, setArrivedToTarget, setBetaInfo} from "./globals_alfa.js";
 var carriedPar = [];
-export let arrivedTarget = false;
-export let delivered = true;
+
 export const counter = { countAttempts: 0};
 
 export function createMap (width, height, tiles) 
 {
-    let mappa = [];
+    let map = [];
 
     for (let i = 0; i < height; i++) {
-        mappa[i] = [];
+        map[i] = [];
         for (let j = 0; j < width; j++) {
-            mappa[i][j] = 0;
+            map[i][j] = 0;
         }
     }
 
@@ -22,11 +22,11 @@ export function createMap (width, height, tiles)
     tiles.forEach(obj => {
         const { x, y, delivery } = obj;
         if (x < height && y < width) {
-            mappa[x][y] = delivery ? 2 : 1;
+            map[x][y] = delivery ? 2 : 1;
         }
     });
     
-    return mappa; 
+    return map; 
 }
 
 // Define directions for movement: up, down, left, right
@@ -100,11 +100,11 @@ export function manhattanDistance(pos1, pos2) {    //valuta la manhattan distanc
     return Math.abs(pos1.x - pos2.x) + Math.abs(pos1.y - pos2.y);
 }
 
-export function delDistances(myPos, delCells){     //valuta la distanza tra posizione attuale e celle deliverabili indicando la più vicina
-    delDists = manhattanDist(myPos, delCells) //vettore di distanze
+export function delDistances(myPos, delCell){     //valuta la distanza tra posizione attuale e celle deliverabili indicando la più vicina
+    delDists = manhattanDist(myPos, delCell) //vettore di distanze
     let minDistance = Math.min(...delDists);
     let closestCellIndex = delDists.indexOf(minDistance); 
-    closestDelCell = delCells[closestCellIndex];
+    closestDelCell = delCell[closestCellIndex];
     closestDelCell.distance = minDistance; //aggiungo il parametro distance all'oggetto closestDelCell se non ce l'ha
 
     return closestDelCell;
@@ -112,8 +112,8 @@ export function delDistances(myPos, delCells){     //valuta la distanza tra posi
 
 
 export function delivery(myPos){                   //calcola il percorso per arrivare alla delivery cell più vicina e muove l'agente
-    closestDelCell = delDistances(myPos, delCells);
-    let shortestPath = shortestPathBFS(myPos.x, myPos.y, closestDelCell.x, closestDelCell.y, map);
+    closestDelCell = delDistances(myPos, DEL_CELLS);
+    let shortestPath = shortestPathBFS(myPos.x, myPos.y, closestDelCell.x, closestDelCell.y, MAP);
     let direction = nextMove(myPos,shortestPath);
     
     if(direction === 'same'){
@@ -134,7 +134,7 @@ export function findClosestParcel(myPos, parcels) {    //valuta la distanza tra 
     
     for (let i = 0; i < parcels.length; i++) {
         try{
-            let path = shortestPathBFS(myPos.x, myPos.y, parcels[i].x, parcels[i].y, map);
+            let path = shortestPathBFS(myPos.x, myPos.y, parcels[i].x, parcels[i].y, MAP);
         
             if ((path.length < closestDistance)) {
                 parcel = parcels[i];
@@ -151,25 +151,25 @@ export function findClosestParcel(myPos, parcels) {    //valuta la distanza tra 
     return [parcel, finalPath];
 }
 
-export function findClosestDelCell(myPos, dellCells) {    //valuta la distanza tra posizione attuale e pacchetto libero più vicino
+export function findClosestDelCell(myPos, delCellsArray) {    //evaluate distance between mypositon and closest deliverable cell
     let delCell;
     let closestDistance = 10000;
     let finalPath;
 
-    if (!Array.isArray(dellCells)) {
-        delCells = [delCells];
+    if (!Array.isArray(delCellsArray)) {
+        DEL_CELLS = [DEL_CELLS];
     }
     
     // console.log("delCells:", delCells)
 
-    for (let i = 0; i < delCells.length; i++) {
-        //console.log("delcells[i].x", delCells[i].x);
-        //console.log("delcells[i].y", delCells[i].y);
-        let path = shortestPathBFS(myPos.x, myPos.y, delCells[i].x, delCells[i].y, map);
+    for (let i = 0; i < DEL_CELLS.length; i++) {
+        //console.log("[i].x", delCell[i].x);
+        //console.log("delCell[i].y", delCell[i].y);
+        let path = shortestPathBFS(myPos.x, myPos.y, DEL_CELLS[i].x, DEL_CELLS[i].y, MAP);
         
         try{
             if ((path.length < closestDistance)) {
-                delCell = delCells[i];
+                delCell = DEL_CELLS[i];
                 closestDistance = path.length;
                 finalPath = path;
                 //console.log("save del cell", delCell);
@@ -205,24 +205,24 @@ export function findFurtherPos(myPos, cells) {
     cells.x = Math.floor(cells.x);
     cells.y = Math.floor(cells.y);
 
-    while(checkCondition(myPos, map, cells) || path==null){
-        //console.log("map[",cells.x,"][",cells.y,"]=",map[cells.x][cells.y]);
+    while(checkCondition(myPos, MAP, cells) || path==null){
+        //console.log("MAP[",cells.x,"][",cells.y,"]=", MAP[cells.x][cells.y]);
         cells.x--;
         cells.y--;
         
         if(cells.x<0){
-            cells.x = map.length;
+            cells.x = MAP.length;
         }
         
         if(cells.y<0){
-            cells.y = map[0].length;
+            cells.y = MAP[0].length;
         }
 
-        path = shortestPathBFS(Math.round(myPos.x), Math.round(myPos.y), cells.x, cells.y, map);
+        path = shortestPathBFS(Math.round(myPos.x), Math.round(myPos.y), cells.x, cells.y, MAP);
 
         if(counter.countAttempts>50){
             // console.log("Forcing path");
-            path = shortestPathBFS(Math.round(myPos.x), Math.round(myPos.y), Math.round(myPos.x), 0, map);
+            path = shortestPathBFS(Math.round(myPos.x), Math.round(myPos.y), Math.round(myPos.x), 0, MAP);
             counter.countAttempts=0;
         }
 
@@ -281,7 +281,7 @@ export async function moveTo(myPos, path){
     // console.log("myPos new", myPos);
     if(direction === 'same' || direction === undefined){
         //console.log("arrivatooooooooooooooooooooooooooooo");
-        arrivedTarget=true;
+        setArrivedToTarget(true);
     } else {
         await move(direction);
     }
@@ -317,22 +317,14 @@ export function emptyCarriedPar(){
     carriedPar = [];
 }
 
-export function setArrived(cond){
-    arrivedTarget=cond;
-}
-
 export function iAmOnDelCell(myPos){
-    let iAm = delCells.some(cell => cell.x === myPos.x && cell.y === myPos.y);
+    let iAm = DEL_CELLS.some(cell => cell.x === myPos.x && cell.y === myPos.y);
     return iAm; 
 }
 
 export function iAmOnParcel(myPos, parcels){
     let iAm = parcels.some(cell => cell.x === myPos.x && cell.y === myPos.y);
     return iAm; 
-}
-
-export function setDelivered(cond){
-    delivered=cond;
 }
 
 export function getMinCarriedValue(){
@@ -371,7 +363,7 @@ export function assignNewOpposite(myPos, mapLength) {
             newOpposite.y = 0;
             counter.countAttempts=0;
         }
-    } while (isAdjacentOrSame(myPos, newOpposite) || checkCondition(myPos,map,newOpposite));
+    } while (isAdjacentOrSame(myPos, newOpposite) || checkCondition(myPos,MAP,newOpposite));
     return newOpposite;
 }
 
@@ -447,4 +439,36 @@ export function assignOpposite(myPos, map){
 
     // Se nessuna delle precedenti opzioni ha funzionato, ritorna la posizione attuale
     return myPos;
+}
+
+export async function isBetaThere(otherAgents)
+{
+    //if it exists an agent named 'beta'
+    if(otherAgents.find(agent=> agent.name === "beta") ){
+        let agent = otherAgents.find(agent=> agent.name === "beta");
+        //verify if it's our beta
+        await say(agent.id, "Are you my double agent?")
+        client.onMsg( (id, name, msg, reply) => {
+            console.log("new msg received from",id, name +':', msg);
+            if (msg === 'yes') { //it is our beta
+                console.log("beta is our double agent");
+                setBetaInfo(id, name);
+                let answer = 'hello '+ BETA_NAME + ', I am' + me.name + '. We are now bonded for eternity';
+                console.log("my reply: ", answer);
+                if (reply){
+                    try { reply(answer) } catch { (error) => console.error(error) }
+                }
+                return true;
+            } 
+            else {
+                console.log("beta is not our double agent");
+                return false;
+            }
+        });
+    }
+    else {
+        console.log("No beta agent found");
+        return false;
+    }
+
 }

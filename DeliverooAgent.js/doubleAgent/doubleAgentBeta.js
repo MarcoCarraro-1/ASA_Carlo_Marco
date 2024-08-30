@@ -3,10 +3,9 @@ import { DeliverooApi, timer } from "@unitn-asa/deliveroo-js-client";
 import {createMap, shortestPathBFS, manhattanDist, manhattanDistance, delDistances, findClosestParcel, nextMove, delivery, updateCarriedPar, 
         getCarriedPar, getCarriedValue, emptyCarriedPar, moveTo, arrivedTarget, setArrived, findClosestDelCell, findFurtherPos, iAmOnDelCell,
         iAmOnParcel, setDelivered, delivered, getMinCarriedValue, isAdjacentOrSame, assignNewOpposite, executePddlAction,
-        checkPos, assignOpposite,checkCondition, counter, getRandomCoordinate, sendMessage} from "./utils_beta.js";
-import { iAmNearer, msgCreator } from "./intentions_beta.js";
+        checkPos, assignOpposite,checkCondition, counter, getRandomCoordinate} from "./utils_beta.js";
+import { iAmNearer} from "./intentions_beta.js";
 import { generatePlanWithPddl } from "../PddlParser.js";
-import { getAlfaInfo } from "./doubleAgentAlfa.js";
 
 export const client = new DeliverooApi( config.host, config.token_beta )
 client.onConnect( () => console.log( "socket", client.socket.id ) );
@@ -77,10 +76,9 @@ client.onMap((width, height, tiles) =>
     
 })
 
-async function say(msg)
+export async function say(id, msg)
 {
-    msg = msgCreator();
-    await client.say( getAlfaInfo().id, msg)
+    await client.say(id, msg)
 }
 
 client.onParcelsSensing((p)=> {
@@ -90,8 +88,9 @@ client.onParcelsSensing((p)=> {
     }
 })
 
-client.onMsg((msgInfo) => {
-    console.log("Received message from", msgInfo.name, msgInfo.id, ":", msgInfo.msg);
+client.onMsg((id, name, msg, reply) => {
+    console.log("Received message from", name, id, ":", msg);
+    reply("Yes");
 })
 
 export async function move ( direction ) 
@@ -281,7 +280,6 @@ async function agentLoop(){
             setDelivered(false);
             updateCarriedPar(targetParcel);
             // console.log("here5");
-            await say();
             await pickup();
         }else if(iAmOnDelCell(myPos)){
             // console.log("have to put4");

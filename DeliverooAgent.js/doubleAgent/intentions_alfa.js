@@ -1,5 +1,5 @@
 import { shortestPathBFS } from "./utils_alfa.js"
-import { map } from "./doubleAgentAlfa.js"
+import { MAP } from "./globals_alfa.js"
 
 export function tradeOff (distanceToPar, distanceToDel, nearestDelDist, parcelVal, carriedPar)
 {
@@ -31,7 +31,7 @@ export function iAmNearer(otherAgents, position, BFStoParcel) //se un altro agen
         minDistance = BFStoParcel.length;
         otherAgents.forEach(agent => {
             let agentPos = {x: agent.x, y: agent.y};
-            if(shortestPathBFS(agentPos.x, agentPos.y, position.x, position.y, map).length < minDistance){
+            if(shortestPathBFS(agentPos.x, agentPos.y, position.x, position.y, MAP).length < minDistance){
                 check=false;
             }
         })
@@ -44,6 +44,6 @@ export function iAmNearer(otherAgents, position, BFStoParcel) //se un altro agen
 
 export function msgCreator( )
 {
-    
+
 }
 
