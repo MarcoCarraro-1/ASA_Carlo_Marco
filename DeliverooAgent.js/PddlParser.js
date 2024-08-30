@@ -205,7 +205,14 @@ async function generatePlanWithPddl(parcels, agents, map, destinationTile, me, s
         console.log("Error in calling online solver");
     }
 
-
+    console.log("plan in pddlparser:",plan);
+    if(plan==undefined){
+        try{
+            plan = await onlineSolver(domain, encodedProblem);
+        }catch(err){
+            console.log("Error in calling online solver");
+        }
+    }
     if (!plan) {
         console.log('ERROR GENERATING PLAN INSIDE PDDLParser.js');
     }

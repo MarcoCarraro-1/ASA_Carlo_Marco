@@ -2,7 +2,7 @@ let delDists = [];      //distanza da celle deliverabili
 let closestDelCell;     //cella deliverabile più vicina
 import { tradeOff } from "./intentions.js";
 import { map, move, putdown, delCells, pickup, client, changeDelCell} from "./mioBottino.js";
-var carriedPar = [];
+export var carriedPar = [];
 export let arrivedTarget = false;
 export let delivered = true;
 export const attCounter = { countAttempts: 0};

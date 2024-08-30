@@ -5,7 +5,8 @@ import {createMap, shortestPathBFS, manhattanDist, manhattanDistance, delDistanc
         iAmOnParcel, setDelivered, delivered, getMinCarriedValue, isAdjacentOrSame, assignNewOpposite, executePddlAction,
         checkPos, assignOpposite,
         checkCondition,
-        attCounter, getRandomCoordinate, delCounter} from "./utils.js";
+        attCounter, getRandomCoordinate, delCounter,
+        carriedPar} from "./utils.js";
 import { iAmNearer } from "./intentions.js";
 import { generatePlanWithPddl } from "./PddlParser.js";
 
@@ -395,20 +396,62 @@ async function agentLoop_pddl(){
                     
                     pddlPlan=undefined;
                     while(pddlPlan==undefined){
+                        myPos=checkPos(myPos.x, myPos.y);
                         pddlPlan = await generatePlanWithPddl(parcels, otherAgents, map, closestDelCell, me, "del");
-                        //console.log("block1");
-                    }
-                    for (let action of pddlPlan) {
-                        await executePddlAction(action);
-                        
-                        if (parcels.length != 0 || targetParcel != null) {
+                        console.log("block1");
+                        if(iAmOnDelCell(myPos)){
                             break;
                         }
+
+                        let tempTarget = BFStoDel[BFStoDel.length-1]; 
+                    
+                        try{
+                            if(isAdjacentOrSame(myPos, tempTarget)){
+                                delCounter.countAttempts++;
+                            }
+                        }catch{}
+
+                        if(delCounter.countAttempts>5){
+                            console.log("here1");
+                            if(tempTarget==undefined) {
+                                tempTarget = myPos; 
+                            }
+                            
+                            [closestDelCell, BFStoDel] = findClosestDelCell(myPos, delCells.filter(cell => (cell.x !== tempTarget.x && cell.y !== tempTarget.y)));
+                            changeDelCell.change=true;
+                            
+                            myPos = checkPos(myPos.x, myPos.y);
+                            console.log("mypos:",myPos);
+                            console.log("closest del cell:", closestDelCell);
+                            console.log("bfstodel:",BFStoDel);
+                            pddlPlan = await generatePlanWithPddl(parcels, otherAgents, map, closestDelCell, me, "del");
+                            console.log("mosso");
+                            if(myPos.x == closestDelCell.x && myPos.y == closestDelCell.y){
+                                console.log("i am in closest del");
+                            }
+                            delCounter.countAttempts = 0;
+                        }
+
                     }
-                    emptyCarriedPar();
-                    setDelivered(true);
-                    await putdown();
-                    await new Promise(resolve => setTimeout(resolve, 100));
+                    
+                    try{
+                        for (let action of pddlPlan) {
+                            await executePddlAction(action);
+                            
+                            if (parcels.length != 0 || targetParcel != null) {
+                                break;
+                            }
+                        }
+                    }catch{}
+                    
+                    myPos=checkPos(myPos.x, myPos.y);
+                    if(iAmOnDelCell(myPos)){
+                        emptyCarriedPar();
+                        setDelivered(true);
+                        await putdown();
+                        await new Promise(resolve => setTimeout(resolve, 100));
+                    }
+                    
                 }else{
                     if(iAmOnDelCell(myPos)){
                         emptyCarriedPar();
@@ -428,7 +471,7 @@ async function agentLoop_pddl(){
                     pddlPlan=undefined;
                     while(pddlPlan==undefined){
                         pddlPlan = await generatePlanWithPddl(parcels, otherAgents, map, opposite, me, "opp");
-                        //console.log("block2");
+                        console.log("block2");
                         attCounter.countAttempts++;
                         //console.log("counter",attCounter.countAttempts);
                         if(attCounter.countAttempts>5){
@@ -470,26 +513,81 @@ async function agentLoop_pddl(){
                     && getCarriedPar()!=undefined){
                         pddlPlan=undefined;
                         while(pddlPlan==undefined){
+                            myPos=checkPos(myPos.x, myPos.y);
                             pddlPlan = await generatePlanWithPddl(parcels, otherAgents, map, closestDelCell, me, "del");
-                            //console.log("block3");
-                        }
-                        
-                        for (let action of pddlPlan) {
-                            await executePddlAction(action);
-                            
-                            if (parcels == undefined || targetParcel == null) {
+                            console.log("block3");
+                            if(iAmOnDelCell(myPos)){
                                 break;
                             }
+
+
+                            let tempTarget = BFStoDel[BFStoDel.length-1];  
+
+                            try{
+                                if(isAdjacentOrSame(myPos, tempTarget)){
+                                    console.log("here4");
+                                    delCounter.countAttempts++;
+                                }
+                            }catch{
+                                console.log("error in checking adjacent");
+                            }
+                            
+                            if(delCounter.countAttempts>5){
+                                //console.log("CHANGE DEL CELL!!!!!!!!!!!!!!!!");
+                                console.log("here5");
+                                if(tempTarget==undefined) {
+                                    tempTarget = myPos; 
+                                }
+                                
+                                [closestDelCell, BFStoDel] = findClosestDelCell(myPos, delCells.filter(cell => (cell.x !== tempTarget.x && cell.y !== tempTarget.y)));
+                                changeDelCell.change=true;
+                                pddlPlan = await generatePlanWithPddl(parcels, otherAgents, map, closestDelCell, me, "del");
+                                myPos = checkPos(myPos.x, myPos.y);
+                                console.log("2mypos:",myPos);
+                                console.log("2closest del cell:", closestDelCell);
+                                console.log("2bfstodel:",BFStoDel);
+                                if(myPos.x == closestDelCell.x && myPos.y == closestDelCell.y){
+                                    console.log("i am in closest del");
+                                }
+                                delCounter.countAttempts = 0;
+                            }
+
+
+
+
                         }
-                        emptyCarriedPar();
-                        setDelivered(true);
-                        await putdown();
+                        
+                        try{
+                            for (let action of pddlPlan) {
+                                await executePddlAction(action);
+                                
+                                if (parcels == undefined || targetParcel == null) {
+                                    break;
+                                }
+                            }
+                        }catch{}
+                        
+                        if(iAmOnDelCell(myPos)){
+                            emptyCarriedPar();
+                            setDelivered(true);
+                            await putdown();
+                        }
+                        
                 } else {
                     try{
                         pddlPlan=undefined;
                         while(pddlPlan==undefined){
-                            pddlPlan = await generatePlanWithPddl(parcels, otherAgents, map, targetParcel, me,"toparcel");    
-                            //console.log("block4");
+                            if(!carriedPar.some(parcel => parcel && parcel.id === 'p3')){
+                                pddlPlan = await generatePlanWithPddl(parcels, otherAgents, map, targetParcel, me,"toparcel");    
+                                console.log("block4");
+                                console.log("target",targetParcel);
+                                console.log("carriedPar",carriedPar);
+                            }else{
+                                setDelivered(false);
+                                updateCarriedPar(targetParcel);
+                                //await pickup();
+                                pddlPlan = await generatePlanWithPddl(parcels, otherAgents, map, closestDelCell, me, "del");
+                            }
                         }
                         
                         for (let action of pddlPlan) {
