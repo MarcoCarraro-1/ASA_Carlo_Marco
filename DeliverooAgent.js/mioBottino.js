@@ -231,7 +231,16 @@ async function agentLoop(){
                         
                         [closestDelCell, BFStoDel] = findClosestDelCell(myPos, delCells.filter(cell => (cell.x !== tempTarget.x && cell.y !== tempTarget.y)));
                         changeDelCell.change=true;
+                        
+                        myPos = checkPos(myPos.x, myPos.y);
+                        console.log("mypos:",myPos);
+                        console.log("closest del cell:", closestDelCell);
+                        console.log("bfstodel:",BFStoDel);
                         await moveTo(myPos,BFStoDel);
+                        console.log("mosso");
+                        if(myPos.x == closestDelCell.x && myPos.y == closestDelCell.y){
+                            console.log("i am in closest del");
+                        }
                         delCounter.countAttempts = 0;
                     }
                 }else{
@@ -259,7 +268,7 @@ async function agentLoop(){
                 }
 
             }else{
-                //console.log("yes target");
+                console.log("here6");
                 myPos = checkPos(myPos.x, myPos.y);
                 if((BFStoDel.length<BFStoParcel.length || BFStoParcel.length>=getMinCarriedValue()) 
                 && !delivered && getCarriedPar()!=0 
@@ -273,11 +282,13 @@ async function agentLoop(){
                             console.log("here4");
                             delCounter.countAttempts++;
                         }
-                    }catch{}
+                    }catch{
+                        console.log("error in checking adjacent");
+                    }
                     
                     if(delCounter.countAttempts>5){
                         //console.log("CHANGE DEL CELL!!!!!!!!!!!!!!!!");
-                        
+                        console.log("here5");
                         if(tempTarget==undefined) {
                             tempTarget = myPos; 
                         }
@@ -285,11 +296,26 @@ async function agentLoop(){
                         [closestDelCell, BFStoDel] = findClosestDelCell(myPos, delCells.filter(cell => (cell.x !== tempTarget.x && cell.y !== tempTarget.y)));
                         changeDelCell.change=true;
                         await moveTo(myPos,BFStoDel);
+                        myPos = checkPos(myPos.x, myPos.y);
+                        console.log("2mypos:",myPos);
+                        console.log("2closest del cell:", closestDelCell);
+                        console.log("2bfstodel:",BFStoDel);
+                        if(myPos.x == closestDelCell.x && myPos.y == closestDelCell.y){
+                            console.log("i am in closest del");
+                        }
                         delCounter.countAttempts = 0;
+                    }
+
+                    if(iAmOnDelCell(myPos)){
+                        console.log("here7");
+                        await putdown();
+                        await new Promise(resolve => setTimeout(resolve, 100));
+                        emptyCarriedPar();
+                        setDelivered(true);
                     }
                 } else {
                     //console.log("go to par");
-                    //console.log("bfstoparcel:",BFStoParcel);
+                    console.log("here8");
                     try{
                         await moveTo(myPos,BFStoParcel);
                         //console.log("moved");
