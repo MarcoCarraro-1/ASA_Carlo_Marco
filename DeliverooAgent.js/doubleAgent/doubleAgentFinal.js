@@ -3,7 +3,7 @@ import { DeliverooApi, timer } from "@unitn-asa/deliveroo-js-client";
 import {createMap, shortestPathBFS, manhattanDist, manhattanDistance, delDistances, findClosestParcel, nextMove, delivery, updateCarriedPar, 
         getCarriedPar, getCarriedValue, emptyCarriedPar, moveTo, findClosestDelCell, findFurtherPos, iAmOnDelCell,
         iAmOnParcel, getMinCarriedValue, isAdjacentOrSame, assignNewOpposite, executePddlAction,
-        checkPos, assignOpposite, checkCondition, counter, getRandomCoordinate} from "./utils_alfa.js";
+        checkPos, assignOpposite, checkCondition, counter, getRandomCoordinate, isBetaThere} from "./utils_alfa.js";
 import { iAmNearer} from "./intentions_alfa.js";
 import { generatePlanWithPddl } from "../PddlParser.js";
 import {DEL_CELLS, MAP, ARRIVED_TO_TARGET, DELIVERED, setArrivedToTarget, setDelivered} from"./globals_alfa.js";
@@ -167,7 +167,7 @@ function findTargetParcel_pddl(){
         if(firstPath==null){
             firstPath = BFStoParcel;
         }
-        
+                    
         setAgentsCallback((agents) => {
             //console.log("Opponents in FOW: ",otherAgents.length);
         });
@@ -182,127 +182,9 @@ function findTargetParcel_pddl(){
 }
 
 
-async function agentLoop(){
+async function agentAlfaLoop(){
     while(true){
-        //link to beta agent
-        await isBetaThere(otherAgents);
-
-        while(parcels==undefined){
-            await timer( 20 );
-        }
         
-        if(targetParcel==null){
-            // console.log("look for target");
-            // console.log("here7");
-            findTargetParcel();
-        }
-
-        if(targetParcel==null){
-            // console.log("NO TARGET PARCEL");
-        }
-        
-        
-        while(!ARRIVED_TO_TARGET){
-            while(parcels==undefined){
-                await timer( 20 );
-            }
-            
-            if(opposite==null){
-                opposite = assignOpposite(myPos, MAP);
-                opposite = {x:(MAP.length-1)-myPos.x, y:(MAP.length-1)-myPos.y};
-                if (isAdjacentOrSame(myPos, opposite)) {
-                    opposite = assignNewOpposite(myPos, MAP.length);
-                }
-            }
-            
-            if(iAmOnDelCell(myPos)){
-                emptyCarriedPar();
-                setDelivered(true);
-                // console.log("have to put");
-                await putdown();
-                await new Promise(resolve => setTimeout(resolve, 100));
-                // console.log("done it");
-            }
-            
-            // console.log("look for target 2");
-            // console.log("initial target:", targetParcel);
-            if(targetParcel==null){
-                findTargetParcel();
-            }
-
-            if(targetParcel==null){
-                // console.log("no target parcel");
-                if(!DELIVERED ){
-                    // console.log("go to del subitooooo");
-                    myPos = checkPos(myPos.x, myPos.y);
-                    await moveTo(myPos,BFStoDel);
-                }else{
-                    // console.log("già deliveratoooooooo");
-                    if(iAmOnDelCell(myPos)){
-                        emptyCarriedPar();
-                        setDelivered(true);
-                        try{
-                            // console.log("have to put2");
-                            await putdown();
-                            await new Promise(resolve => setTimeout(resolve, 100));
-                        } catch {
-
-                        }
-                        // console.log("have to put3");
-                        await putdown();
-                        await new Promise(resolve => setTimeout(resolve, 200));
-                    }
-                    opposite.x = Math.floor(opposite.x);
-                    opposite.y = Math.floor(opposite.y);
-                    [opposite, BFStoOpposite] = findFurtherPos(myPos,opposite);
-                    // console.log("here2");
-                    myPos = checkPos(myPos.x, myPos.y);
-                    await moveTo(myPos,BFStoOpposite);
-                }
-
-            }else{
-                // console.log("yes target");
-                myPos = checkPos(myPos.x, myPos.y);
-                if((BFStoDel.length<BFStoParcel.length || BFStoParcel.length>=getMinCarriedValue()) 
-                && !DELIVERED  && getCarriedPar()!=0 
-                && getCarriedPar()!=undefined){
-                    // console.log("go to del");
-                    await moveTo(myPos,BFStoDel);
-                } else {
-                    // console.log("go to par");
-                    // console.log("bfstoparcel:",BFStoParcel);
-                    try{
-                        await moveTo(myPos,BFStoParcel);
-                        // console.log("moved");
-                    }catch{
-                        // console.log("error in moving");
-                    }
-                }
-                
-            }
-            // console.log("checking arrived:",ARRIVED_TO_TARGET);
-        }
-
-        if(iAmOnParcel(myPos, parcels)){
-            setDelivered(false);
-            updateCarriedPar(targetParcel);
-            // console.log("here5");
-            await pickup();
-        }else if(iAmOnDelCell(myPos)){
-            // console.log("have to put4");
-            await putdown();
-            await new Promise(resolve => setTimeout(resolve, 100));
-            emptyCarriedPar();
-            setDelivered(true);
-        }
-        setArrivedToTarget(false);
-        targetParcel=null;
-        //console.log("SETTO A FALSEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE");
-        
-        opposite = {x:(MAP.length-1)-myPos.x, y:(MAP.length-1)-myPos.y};
-        if (isAdjacentOrSame(myPos, opposite)) {
-            opposite = assignNewOpposite(myPos, MAP.length);
-        }
     }
 }
 

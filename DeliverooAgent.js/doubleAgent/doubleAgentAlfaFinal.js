@@ -3,19 +3,18 @@ import { DeliverooApi, timer } from "@unitn-asa/deliveroo-js-client";
 import {createMap, shortestPathBFS, manhattanDist, manhattanDistance, delDistances, findClosestParcel, nextMove, delivery, updateCarriedPar, 
         getCarriedPar, getCarriedValue, emptyCarriedPar, moveTo, findClosestDelCell, findFurtherPos, iAmOnDelCell,
         iAmOnParcel, getMinCarriedValue, isAdjacentOrSame, assignNewOpposite, executePddlAction,
-        checkPos, assignOpposite, checkCondition, counter, getRandomCoordinate} from "./utils_alfa.js";
+        checkPos, assignOpposite, checkCondition, counter, getRandomCoordinate, isBetaThere} from "./utils_alfa.js";
 import { iAmNearer} from "./intentions_alfa.js";
 import { generatePlanWithPddl } from "../PddlParser.js";
 import {DEL_CELLS, MAP, ARRIVED_TO_TARGET, DELIVERED, setArrivedToTarget, setDelivered} from"./globals_alfa.js";
+import {Agent} from './classAgent.js';
 
 export const client = new DeliverooApi( config.host, config.token_alfa )
-client.onConnect( () => console.log("socket", client.socket.id ) );
-client.onDisconnect( () => console.log( "disconnected", client.socket.id ) );
+clientAlfa.onConnect( () => console.log("socket", clientAlfa.socket.id ) );
+clientAlfa.onDisconnect( () => console.log( "disconnected", clientAlfa.socket.id ) );
+const agent = new Agent(client)
 
-let myPos = [];         //posizione attuale bot
-let myId;
-let me;
-let myName;
+
 var closestParcel;      //cella con pacchetto libero più vicina
 var targetParcel;       //cella con pacchetto obiettivo
 var firstPath;          //path da seguire nel caso in cui non ci sia soluzione ottimale
@@ -36,33 +35,16 @@ let pddlPlan=undefined;
 //let usePddl = false;
 
 
-client.onYou((info) => {
-    myPos = {x: info.x, y: info.y};
-    myId = info.id;
-    myName = info.name;
-    console.log("I am", myName, "with id", myId, "at", myPos);
-    me = {
-        id: myId,
-        x: myPos.x,
-        y: myPos.y,
-        name: myName
-    };
-});
+agent.assignOnYouInfo();
 
-export function getAlfaInfo()
-{
-    return me;
-}
-
-client.onAgentsSensing((agents) => {
+clientAlfa.onAgentsSensing((agents) => {
     otherAgents = agents;
-
     if (agentsCallback) {
         agentsCallback(agents);
     }
 })
 
-client.onMap((width, height, tiles) => 
+clientAlfa.onMap((width, height, tiles) => 
 {
     //avoiding assignment to a constant variable
     MAP.length = 0;
@@ -74,23 +56,17 @@ client.onMap((width, height, tiles) =>
             let cell = { x: tile.x, y: tile.y};
             DEL_CELLS.push(cell); //vettore di celle deliverabili
         }
-    })
-    
+    });
 })
 
-export async function say(id, msg)
-{
-    await client.say(id, msg)
-}
-
-client.onParcelsSensing((p)=> {
+clientAlfa.onParcelsSensing((p)=> {
     parcels = p.filter(parcel => parcel.carriedBy === null);
     if (parcelsCallback) {
         parcelsCallback(p);
     }
 })
 
-client.onMsg( (id, name, msg, reply) => {
+clientAlfa.onMsg( (id, name, msg, reply) => {
     console.log("new msg received from", id, name+':', msg);
     let answer = 'hello ' + name + ', here is reply.js as ' + me.name + '. Do you need anything?';
     console.log("my reply: ", answer);
@@ -98,58 +74,12 @@ client.onMsg( (id, name, msg, reply) => {
         try { reply(answer) } catch { (error) => console.error(error)}
 });
 
-export async function move ( direction ) 
-{
-    await client.move( direction ) 
-}
-
-export async function pickup (  ) 
-{
-    await client.pickup();
-}
-
-
-export async function putdown (  ) 
-{
-    await client.putdown();
-}
-
 /*async function callUpdatePar(parcel){
     await updateCarriedPar(parcel);
 }*/
 
-
 function setAgentsCallback(callback) {
     agentsCallback = callback;
-}
-
-function findTargetParcel(){
-    [closestDelCell, BFStoDel] = findClosestDelCell(myPos, DEL_CELLS);
-    targetParcel = null;
-    while(parcels.length > 0 && targetParcel==null){
-        [closestParcel, BFStoParcel] = findClosestParcel(myPos, parcels);
-
-        if(closestParcel==null){
-            parcels.length=0;
-        }
-                    
-        if(firstPath==null){
-            firstPath = BFStoParcel;
-        }
-        
-        setAgentsCallback((agents) => {
-            // console.log("Opponents in FOW: ", otherAgents.length);
-            // console.log("Opponents ids: ", otherAgents.map(agent => agent.id));
-        });
-
-        if(iAmNearer(otherAgents, closestParcel, BFStoParcel)){
-            targetParcel = closestParcel;
-            // console.log("target parcel:", targetParcel);
-        } else {
-            //console.log("Opponent will steal ", closestParcel.id);
-            parcels = parcels.filter(parcel => parcel.id !== closestParcel.id);
-        }
-    }
 }
 
 function findTargetParcel_pddl(){
@@ -167,7 +97,7 @@ function findTargetParcel_pddl(){
         if(firstPath==null){
             firstPath = BFStoParcel;
         }
-        
+                    
         setAgentsCallback((agents) => {
             //console.log("Opponents in FOW: ",otherAgents.length);
         });
@@ -501,3 +431,4 @@ function startGame() {
 }
 
 startGame();
+// Your code here

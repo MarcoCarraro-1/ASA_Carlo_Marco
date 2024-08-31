@@ -6,6 +6,7 @@ import {createMap, shortestPathBFS, manhattanDist, manhattanDistance, delDistanc
         checkPos, assignOpposite,checkCondition, counter, getRandomCoordinate} from "./utils_beta.js";
 import { iAmNearer} from "./intentions_beta.js";
 import { generatePlanWithPddl } from "../PddlParser.js";
+import { getAlfaInfo } from "./doubleAgentAlfa.js";
 
 export const client = new DeliverooApi( config.host, config.token_beta )
 client.onConnect( () => console.log( "socket", client.socket.id ) );
@@ -90,8 +91,8 @@ client.onParcelsSensing((p)=> {
 
 client.onMsg((id, name, msg, reply) => {
     console.log("Received message from", name, id, ":", msg);
-    reply("Yes");
-})
+    say(id, "yes");
+});
 
 export async function move ( direction ) 
 {

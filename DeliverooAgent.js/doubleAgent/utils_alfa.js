@@ -1,8 +1,7 @@
 let delDists = [];      //distanza da celle deliverabili
 let closestDelCell;     //cella deliverabile più vicina
-import { tradeOff } from "./intentions_alfa.js";
 import {move, putdown, pickup, client, say} from "./doubleAgentAlfa.js";
-import {DEL_CELLS, MAP, ARRIVED_TO_TARGET, DELIVERED, BETA_ID, BETA_NAME, setArrivedToTarget, setBetaInfo} from "./globals_alfa.js";
+import {DEL_CELLS, MAP, BETA_NAME, setArrivedToTarget, setBetaInfo} from "./globals_alfa.js";
 var carriedPar = [];
 
 export const counter = { countAttempts: 0};
@@ -229,8 +228,6 @@ export function findFurtherPos(myPos, cells) {
         
     }
 
-    
-    
     if ((path.length < closestDistance)) {
         cell = cells;
         closestDistance = path.length;
@@ -441,19 +438,21 @@ export function assignOpposite(myPos, map){
     return myPos;
 }
 
-export async function isBetaThere(otherAgents)
+export async function bondToDouble(otherAgents, senderName, senderId)
 {
     //if it exists an agent named 'beta'
+    // let myName = myInfo.name;
     if(otherAgents.find(agent=> agent.name === "beta") ){
         let agent = otherAgents.find(agent=> agent.name === "beta");
+        // console.log("beta agent found with id: ", agent.id);
         //verify if it's our beta
         await say(agent.id, "Are you my double agent?")
         client.onMsg( (id, name, msg, reply) => {
-            console.log("new msg received from",id, name +':', msg);
+            // console.log("new msg received from",id, name +':', msg);
             if (msg === 'yes') { //it is our beta
-                console.log("beta is our double agent");
+                // console.log("beta is our double agent");
                 setBetaInfo(id, name);
-                let answer = 'hello '+ BETA_NAME + ', I am' + me.name + '. We are now bonded for eternity';
+                let answer = 'hello '+ BETA_NAME + ', I am '+ senderName + senderId + '. We are now bonded for eternity';
                 console.log("my reply: ", answer);
                 if (reply){
                     try { reply(answer) } catch { (error) => console.error(error) }
@@ -461,13 +460,13 @@ export async function isBetaThere(otherAgents)
                 return true;
             } 
             else {
-                console.log("beta is not our double agent");
+                // console.log("beta is not our double agent");
                 return false;
             }
         });
     }
     else {
-        console.log("No beta agent found");
+        // console.log("No beta agent found");
         return false;
     }
 
