@@ -9,4 +9,6 @@ agent.assignOnYouInfo();
 await agent.move("up");
 await agent.move("right");
 console.log("I am", agent.name, "with id", agent.id, "at", agent.pos);
-
+await agent.move("down");
+await agent.move("left");
+console.log("I am", agent.name, "with id", agent.id, "at", agent.pos);

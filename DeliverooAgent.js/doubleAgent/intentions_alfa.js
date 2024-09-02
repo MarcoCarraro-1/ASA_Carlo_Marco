@@ -1,45 +1,41 @@
-import { shortestPathBFS } from "./utils_alfa.js"
-import { MAP } from "./globals_alfa.js"
+import { shortestPathBFS } from "./utilsFinal.js"
+import { MAP, PARCEL_DECADING_INTERVAL } from "./globals_alfa.js"
 
-export function tradeOff (distanceToPar, distanceToDel, nearestDelDist, parcelVal, carriedPar)
+export function tradeOff (distanceToParcel, parcelDistanceToDel, nearestDelDistToMe, parcelVal, carriedParLength)
 {
-    let rewordWhenPicked =  parcelVal - distanceToPar; //il valore della parcel quando viene presa 
-                                                //ipotizzando che ogni passo ci impieghi 1 secondo 
-    if(rewordWhenPicked <= 0){
-        //console.log("Rewardwhenpicked <0");
+    let valueWhenPicked =  parcelVal - (distanceToParcel * PARCEL_DECADING_INTERVAL); //the value of the parcel when picked up
+                                                                                    //assuming every step take 1 unit of value 
+    if(valueWhenPicked <= 0){
+        //console.log("value when picked <0");
         return false;
     }
-        
-    let rewordWhenDelivered = rewordWhenPicked - distanceToDel; //il valore della parcel quando viene consegnata
-                                                            //nella deliveryCell più vicina ad essa
-    if(rewordWhenDelivered <= 0){
+    
+    let valueWhenDelivered = valueWhenPicked - parcelDistanceToDel; //the value of the parcel when delivered to its nearest delivery cell
+    if(valueWhenDelivered <= 0){
+        //console.log("value when delivered <0");
         return false;         
     }
-        
-    let carriedParLoss = (carriedPar.length * (distanceToPar + distanceToDel)) - rewordWhenDelivered; //il valore perso per ogni parcel già trasportata
-                                                                                //se andiamo a prendere la parcel
-    if(carriedParLoss < carriedPar.length * nearestDelDist)
-        return true; //se la perdita per prendere la nuova parcel è minore della 
-                //perdita per consegnare quelle già trasportate, va a prenderla
+    
+    let carriedParLoss = (carriedParLength * (distanceToParcel + parcelDistanceToDel)) - valueWhenDelivered; //the value loss for the 
+                                                                                                //carried parcels if we go pickup 
+                                                                                                //and deliver this parcel
+    if(carriedParLoss < carriedParLength * nearestDelDistToMe)
+        return true; //if the loss to deliver the new parcel is counterbalanced by its value we go to pick up and deliver it
 }
 
-export function iAmNearer(otherAgents, position, BFStoParcel) //se un altro agente è più vicino alla parcel
-{                                           //lascio perdere la parcel
-    let check = true;
+export function iAmNearer(otherAgents, position, BFStoPosition) {//check if I am nearer to 'position' than other agents
     let minDistance;
     try{
-        minDistance = BFStoParcel.length;
+        minDistance = BFStoPosition.length; //the distance between me and 'position'
         otherAgents.forEach(agent => {
-            let agentPos = {x: agent.x, y: agent.y};
-            if(shortestPathBFS(agentPos.x, agentPos.y, position.x, position.y, MAP).length < minDistance){
-                check=false;
+            if(shortestPathBFS(agent.x, agent.y, position.x, position.y, MAP).length < minDistance){
+                return false; //there is someone nearer than me
             }
         })
     }catch{
         // console.log("No comparison with other agents");
     }
-    
-    return check;
+    return true;
 }
 
 export function msgCreator( )

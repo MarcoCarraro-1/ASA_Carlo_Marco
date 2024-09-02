@@ -1,72 +1,66 @@
 import { default as config } from "./config.js";
 import { DeliverooApi, timer } from "@unitn-asa/deliveroo-js-client";
-import {createMap, shortestPathBFS, manhattanDist, manhattanDistance, delDistances, findClosestParcel, nextMove, delivery, updateCarriedPar, 
-        getCarriedPar, getCarriedValue, emptyCarriedPar, moveTo, findClosestDelCell, findFurtherPos, iAmOnDelCell,
+import {createMap, updateCarriedPar, getCarriedPar, emptyCarriedPar, moveTo, findFurtherPos, iAmOnDelCell,
         iAmOnParcel, getMinCarriedValue, isAdjacentOrSame, assignNewOpposite, executePddlAction,
-        checkPos, assignOpposite, checkCondition, counter, getRandomCoordinate, isBetaThere} from "./utils_alfa.js";
-import { iAmNearer} from "./intentions_alfa.js";
+        checkPos, assignOpposite, checkCondition, counter, getRandomCoordinate, findTargetParcel} from "./utilsFinal.js";
 import { generatePlanWithPddl } from "../PddlParser.js";
-import {DEL_CELLS, MAP, ARRIVED_TO_TARGET, DELIVERED, setArrivedToTarget, setDelivered} from"./globals_alfa.js";
+import {DEL_CELLS, MAP, ARRIVED_TO_TARGET, DELIVERED, setMap, setArrivedToTarget, setDelivered, setParcelDecadingInterval} from"./globals_alfa.js";
 import {Agent} from './classAgent.js';
 
 export const client = new DeliverooApi( config.host, config.token_alfa )
-clientAlfa.onConnect( () => console.log("socket", clientAlfa.socket.id ) );
-clientAlfa.onDisconnect( () => console.log( "disconnected", clientAlfa.socket.id ) );
-const agent = new Agent(client)
-
+client.onConnect( () => console.log("socket", client.socket.id ) );
+client.onDisconnect( () => console.log( "disconnected", client.socket.id ) );
+export const agent = new Agent(client)
 
 var closestParcel;      //cella con pacchetto libero più vicina
-var targetParcel;       //cella con pacchetto obiettivo
-var firstPath;          //path da seguire nel caso in cui non ci sia soluzione ottimale
+var targetParcel = null;       //cella con pacchetto obiettivo
+var firstPath = null;    //path da seguire nel caso in cui non ci sia soluzione ottimale
 var closestDelCell;
-//let nonCarriedParcels = [];
-let otherAgents = [];
 let agentsCallback;
+let otherAgents = [];
 let parcelsCallback;
-//let carriedParNumber;
-//let carriedParValue;
-//const directions = ['up', 'down', 'left', 'right'];
-var parcels = [];        //takes in consideration only available parcels
+var parcels;
 var BFStoParcel;
 var BFStoDel;
 var BFStoOpposite;
 var opposite;
 let pddlPlan=undefined;
-//let usePddl = false;
 
-
+//get name, id and position of the agent
 agent.assignOnYouInfo();
 
-clientAlfa.onAgentsSensing((agents) => {
+client.onConfig((configInfo) => {
+    // console.log("config", configInfo);
+    setParcelDecadingInterval(configInfo.PARCEL_DECADING_INTERVAL);
+});
+
+client.onAgentsSensing((agents) => {
     otherAgents = agents;
     if (agentsCallback) {
         agentsCallback(agents);
     }
 })
 
-clientAlfa.onMap((width, height, tiles) => 
-{
-    //avoiding assignment to a constant variable
-    MAP.length = 0;
+client.onMap((width, height, tiles) => {
     let map = createMap(width, height, tiles);
-    MAP.push(...map);
-
+    setMap(map); //assign map to global MAP
+    // console.log("MAP:", MAP);
     tiles.forEach(tile => {
         if(tile.delivery){
             let cell = { x: tile.x, y: tile.y};
             DEL_CELLS.push(cell); //vettore di celle deliverabili
         }
     });
-})
+});
 
-clientAlfa.onParcelsSensing((p)=> {
+client.onParcelsSensing((p)=> {
     parcels = p.filter(parcel => parcel.carriedBy === null);
     if (parcelsCallback) {
         parcelsCallback(p);
-    }
-})
+        }
+    })
 
-clientAlfa.onMsg( (id, name, msg, reply) => {
+client.onMsg( (id, name, msg, reply) => {
     console.log("new msg received from", id, name+':', msg);
     let answer = 'hello ' + name + ', here is reply.js as ' + me.name + '. Do you need anything?';
     console.log("my reply: ", answer);
@@ -74,135 +68,111 @@ clientAlfa.onMsg( (id, name, msg, reply) => {
         try { reply(answer) } catch { (error) => console.error(error)}
 });
 
-/*async function callUpdatePar(parcel){
-    await updateCarriedPar(parcel);
-}*/
-
-function setAgentsCallback(callback) {
-    agentsCallback = callback;
-}
-
-function findTargetParcel_pddl(){
-    [closestDelCell, BFStoDel] = findClosestDelCell(myPos, DEL_CELLS);
-    //[closestDelCell, pathToDel] = generatePlanWithPddl(parcels, otherAgents, MAP, null, me, "findDel")
-    //let plan = await generatePlanWithPddl(parcels, otherAgents, MAP, null, me, "findPar");
-    targetParcel = null;
-    while(parcels.length > 0 && targetParcel==null){
-        [closestParcel, BFStoParcel] = findClosestParcel(myPos, parcels);
-
-        if(closestParcel==null){
-            parcels.length=0;
-        }
-
-        if(firstPath==null){
-            firstPath = BFStoParcel;
-        }
-                    
-        setAgentsCallback((agents) => {
-            //console.log("Opponents in FOW: ",otherAgents.length);
-        });
-
-        if(iAmNearer(otherAgents, closestParcel, BFStoParcel)){
-            targetParcel = closestParcel;
-        } else {
-            //console.log("Opponent will steal ", closestParcel.id);
-            parcels = parcels.filter(parcel => parcel.id !== closestParcel.id);
-        }
-    }
-}
-
-
 async function agentLoop(){
-    while(true){
-        //link to beta agent
-        await isBetaThere(otherAgents);
 
-        while(parcels==undefined){
+    while(true){
+        while(parcels==undefined){ //wait for the vector of parcels seen on the map to be set
             await timer( 20 );
         }
+
+        await agent.pickup(); //spamming pickup
         
+        // we search for a parcel to pickup between the ones we see
         if(targetParcel==null){
             // console.log("look for target");
             // console.log("here7");
-            findTargetParcel();
-        }
 
-        if(targetParcel==null){
-            // console.log("NO TARGET PARCEL");
+            [targetParcel, BFStoDel, BFStoParcel, firstPath, parcels] = findTargetParcel(otherAgents, agent.pos, closestParcel, firstPath, parcels);
+            console.log("first findTargetParcel()");
+            console.log("returned targetParcel: ", targetParcel); 
+            console.log("returned BFStoDel: ", BFStoDel)
+            console.log("returned BFStoParcel: ", BFStoParcel) 
+            console.log("returned firstPath: ", firstPath)
+            console.log("returned parcels: ", parcels);
         }
         
-        
+        //
         while(!ARRIVED_TO_TARGET){
+            // console.log("inside !ARRIVED_TO_TARGET-while");
             while(parcels==undefined){
-                await timer( 20 );
+                // console.log("inside parcels==undefined-while");
+                await timer(20);
             }
-            
+            // console.log("MAP_:", MAP);
+
             if(opposite==null){
-                opposite = assignOpposite(myPos, MAP);
-                opposite = {x:(MAP.length-1)-myPos.x, y:(MAP.length-1)-myPos.y};
-                if (isAdjacentOrSame(myPos, opposite)) {
-                    opposite = assignNewOpposite(myPos, MAP.length);
+                // console.log("MAP OPPOSITE:", MAP);
+                opposite = assignOpposite(agent.pos, MAP);
+                opposite = {x:(MAP.length-1)-agent.pos.x, y:(MAP.length-1)-agent.pos.y};
+                if (isAdjacentOrSame(agent.pos, opposite)) {
+                    opposite = assignNewOpposite(agent.pos, MAP.length);
                 }
             }
             
-            if(iAmOnDelCell(myPos)){
-                emptyCarriedPar();
+            if(iAmOnDelCell(agent.pos)){
+                await agent.putdown();
+                emptyCarriedPar(); 
                 setDelivered(true);
                 // console.log("have to put");
-                await putdown();
-                await new Promise(resolve => setTimeout(resolve, 100));
+                // await new Promise(resolve => setTimeout(resolve, 50));
                 // console.log("done it");
             }
             
             // console.log("look for target 2");
             // console.log("initial target:", targetParcel);
             if(targetParcel==null){
-                findTargetParcel();
+                [targetParcel, BFStoDel, BFStoParcel, firstPath, parcels] = findTargetParcel(otherAgents, agent.pos, closestParcel, firstPath, parcels);
+                // console.log("second findTargetParcel()");
+                // console.log("targetParcel: ", targetParcel); 
+                // console.log("\n BFStoDel: ", BFStoDel)
+                // console.log("\n BFStoParcel: ", BFStoParcel) 
+                // console.log("\n firstPath: ", firstPath)
+                // console.log( "\n parcels: ", parcels);
             }
 
             if(targetParcel==null){
                 // console.log("no target parcel");
                 if(!DELIVERED ){
                     // console.log("go to del subitooooo");
-                    myPos = checkPos(myPos.x, myPos.y);
-                    await moveTo(myPos,BFStoDel);
+                    agent.pos = checkPos(agent.pos.x, agent.pos.y);
+                    await moveTo(agent.pos, BFStoDel);
                 }else{
                     // console.log("già deliveratoooooooo");
-                    if(iAmOnDelCell(myPos)){
+                    if(iAmOnDelCell(agent.pos)){
                         emptyCarriedPar();
                         setDelivered(true);
                         try{
                             // console.log("have to put2");
-                            await putdown();
-                            await new Promise(resolve => setTimeout(resolve, 100));
+                            await agent.putdown();
+                            // await new Promise(resolve => setTimeout(resolve, 50));
                         } catch {
 
                         }
                         // console.log("have to put3");
-                        await putdown();
-                        await new Promise(resolve => setTimeout(resolve, 200));
+                        await agent.putdown();
+                        // await new Promise(resolve => setTimeout(resolve, 50));
                     }
                     opposite.x = Math.floor(opposite.x);
                     opposite.y = Math.floor(opposite.y);
-                    [opposite, BFStoOpposite] = findFurtherPos(myPos,opposite);
+                    [opposite, BFStoOpposite] = findFurtherPos(agent.pos,opposite);
                     // console.log("here2");
-                    myPos = checkPos(myPos.x, myPos.y);
-                    await moveTo(myPos,BFStoOpposite);
+                    agent.pos = checkPos(agent.pos.x, agent.pos.y);
+                    await moveTo(agent.pos, BFStoOpposite);
                 }
 
             }else{
                 // console.log("yes target");
-                myPos = checkPos(myPos.x, myPos.y);
+                agent.pos = checkPos(agent.pos.x, agent.pos.y);
                 if((BFStoDel.length<BFStoParcel.length || BFStoParcel.length>=getMinCarriedValue()) 
                 && !DELIVERED  && getCarriedPar()!=0 
                 && getCarriedPar()!=undefined){
                     // console.log("go to del");
-                    await moveTo(myPos,BFStoDel);
+                    await moveTo(agent.pos, BFStoDel);
                 } else {
                     // console.log("go to par");
                     // console.log("bfstoparcel:",BFStoParcel);
                     try{
-                        await moveTo(myPos,BFStoParcel);
+                        await moveTo(agent.pos, BFStoParcel);
                         // console.log("moved");
                     }catch{
                         // console.log("error in moving");
@@ -213,15 +183,15 @@ async function agentLoop(){
             // console.log("checking arrived:",ARRIVED_TO_TARGET);
         }
 
-        if(iAmOnParcel(myPos, parcels)){
+        if(iAmOnParcel(agent.pos, parcels)){
             setDelivered(false);
             updateCarriedPar(targetParcel);
             // console.log("here5");
-            await pickup();
-        }else if(iAmOnDelCell(myPos)){
+            await agent.pickup();
+        }else if(iAmOnDelCell(agent.pos)){
             // console.log("have to put4");
-            await putdown();
-            await new Promise(resolve => setTimeout(resolve, 100));
+            await agent.putdown();
+            // await new Promise(resolve => setTimeout(resolve, 50));
             emptyCarriedPar();
             setDelivered(true);
         }
@@ -229,9 +199,9 @@ async function agentLoop(){
         targetParcel=null;
         //console.log("SETTO A FALSEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE");
         
-        opposite = {x:(MAP.length-1)-myPos.x, y:(MAP.length-1)-myPos.y};
-        if (isAdjacentOrSame(myPos, opposite)) {
-            opposite = assignNewOpposite(myPos, MAP.length);
+        opposite = {x:(MAP.length-1)-agent.pos.x, y:(MAP.length-1)-agent.pos.y};
+        if (isAdjacentOrSame(agent.pos, opposite)) {
+            opposite = assignNewOpposite(agent.pos, MAP.length);
         }
     }
 }
@@ -245,7 +215,7 @@ async function agentLoop_pddl(){
         }
         
         if(targetParcel==null){
-            findTargetParcel_pddl();
+            targetParcel = findTargetParcel_pddl();
         }
 
         while(!ARRIVED_TO_TARGET){
@@ -254,28 +224,28 @@ async function agentLoop_pddl(){
             }
 
             if(opposite==null){
-                opposite = assignOpposite(myPos, MAP);
-                opposite = {x:(MAP.length-1)-myPos.x, y:(MAP.length-1)-myPos.y};
-                if (isAdjacentOrSame(myPos, opposite)) {
-                    opposite = assignNewOpposite(myPos, MAP.length);
+                opposite = assignOpposite(agent.pos, MAP);
+                opposite = {x:(MAP.length-1)-agent.pos.x, y:(MAP.length-1)-agent.pos.y};
+                if (isAdjacentOrSame(agent.pos, opposite)) {
+                    opposite = assignNewOpposite(agent.pos, MAP.length);
                 }
             }
 
-            if(iAmOnDelCell(myPos)){
+            if(iAmOnDelCell(agent.pos)){
                 emptyCarriedPar();
                 setDelivered(true);
-                await putdown();
-                await new Promise(resolve => setTimeout(resolve, 100));
-                //let pddlPlan = await generatePlanWithPddl(parcels, otherAgents, MAP, myPos, me, "putdown");
+                await agent.putdown();
+                // await new Promise(resolve => setTimeout(resolve, 50));
+                //let pddlPlan = await generatePlanWithPddl(parcels, otherAgents, MAP, agent.pos, me, "putdown");
             }
 
             if(targetParcel==null){
-                findTargetParcel_pddl();
+                targetParcel = findTargetParcel_pddl();
             }
 
             if(targetParcel==null){
                 if(!DELIVERED ){
-                    myPos = checkPos(myPos.x, myPos.y);
+                    agent.pos = checkPos(agent.pos.x, agent.pos.y);
                     
                     pddlPlan=undefined;
                     while(pddlPlan==undefined){
@@ -291,24 +261,24 @@ async function agentLoop_pddl(){
                     }
                     emptyCarriedPar();
                     setDelivered(true);
-                    await putdown();
-                    await new Promise(resolve => setTimeout(resolve, 100));
+                    await agent.putdown();
+                    // await new Promise(resolve => setTimeout(resolve, 50));
                 }else{
-                    if(iAmOnDelCell(myPos)){
+                    if(iAmOnDelCell(agent.pos)){
                         emptyCarriedPar();
                         setDelivered(true);
-                        await putdown();
-                        await new Promise(resolve => setTimeout(resolve, 100));
+                        await agent.putdown();
+                        // await new Promise(resolve => setTimeout(resolve, 50));
                     }
-                    //opposite = {x:Math.round((MAP.length-1)-myPos.x), y:Math.round((MAP.length-1)-myPos.y)};
+                    //opposite = {x:Math.round((MAP.length-1)-agent.pos.x), y:Math.round((MAP.length-1)-agent.pos.y)};
                     opposite.x = Math.floor(opposite.x);
                     opposite.y = Math.floor(opposite.y);
-                    if (isAdjacentOrSame(myPos, opposite) || checkCondition(myPos, MAP, opposite)) {
-                        opposite = assignNewOpposite(myPos, MAP.length);
+                    if (isAdjacentOrSame(agent.pos, opposite) || checkCondition(agent.pos, MAP, opposite)) {
+                        opposite = assignNewOpposite(agent.pos, MAP.length);
                     }
-                    //[opposite, BFStoOpposite] = findFurtherPos(myPos,opposite);
+                    //[opposite, BFStoOpposite] = findFurtherPos(agent.pos,opposite);
                     // console.log("OPPOSITE:", opposite);
-                    myPos = checkPos(myPos.x, myPos.y);
+                    agent.pos = checkPos(agent.pos.x, agent.pos.y);
                     pddlPlan=undefined;
                     while(pddlPlan==undefined){
                         pddlPlan = await generatePlanWithPddl(parcels, otherAgents, MAP, opposite, me, "opp");
@@ -317,15 +287,15 @@ async function agentLoop_pddl(){
                         // console.log("counter",counter.countAttempts);
                         if(counter.countAttempts>5){
                             // console.log("Forcing opposite");
-                            opposite.x=myPos.x;
+                            opposite.x=agent.pos.x;
                             opposite.y=0;
                             counter.countAttempts=0;
-                            if(opposite.x==myPos.x && opposite.y==myPos.y){
+                            if(opposite.x==agent.pos.x && opposite.y==agent.pos.y){
                                 opposite.x=0;
-                                opposite.y=myPos.y;
+                                opposite.y=agent.pos.y;
                             }
-                            if(opposite.x==myPos.x && opposite.y==myPos.y &&
-                                myPos.x==0 && myPos.y==0){
+                            if(opposite.x==agent.pos.x && opposite.y==agent.pos.y &&
+                                agent.pos.x==0 && agent.pos.y==0){
                                 opposite.x=getRandomCoordinate(MAP.length);
                                 opposite.y=getRandomCoordinate(MAP[0].length);
                             }
@@ -336,7 +306,7 @@ async function agentLoop_pddl(){
                             opposite.y=getRandomCoordinate(MAP[0].length);
                         }
                     }                        
-                    // console.log("Mypos:",myPos);
+                    // console.log("agent.pos:", agent.pos);
                     // console.log("plan:", pddlPlan);
                     for (let action of pddlPlan) {
                         await executePddlAction(action);
@@ -348,7 +318,7 @@ async function agentLoop_pddl(){
                 }
             
             }else{
-                myPos = checkPos(myPos.x, myPos.y);
+                agent.pos = checkPos(agent.pos.x, agent.pos.y);
                 if((BFStoDel.length<=BFStoParcel.length || BFStoParcel.length>=getMinCarriedValue()) 
                     && !DELIVERED  && getCarriedPar()!=0 
                     && getCarriedPar()!=undefined){
@@ -367,7 +337,7 @@ async function agentLoop_pddl(){
                         }
                         emptyCarriedPar();
                         setDelivered(true);
-                        await putdown();
+                        await agent.putdown();
                 } else {
                     try{
                         pddlPlan=undefined;
@@ -391,22 +361,22 @@ async function agentLoop_pddl(){
                 }
             }
 
-            if(iAmOnParcel(myPos,parcels)){
+            if(iAmOnParcel(agent.pos, parcels)){
                 setDelivered(false);
                 updateCarriedPar(targetParcel);
-                await pickup();
-            }else if(iAmOnDelCell(myPos)){
+                await agent.pickup();
+            }else if(iAmOnDelCell(agent.pos)){
                 emptyCarriedPar();
                 setDelivered(true);
-                await putdown();
-                await new Promise(resolve => setTimeout(resolve, 100));
+                await agent.putdown();
+                // await new Promise(resolve => setTimeout(resolve, 50));
             }
             setArrivedToTarget(false);
             targetParcel=null;
 
-            opposite = {x:(MAP.length-1)-myPos.x, y:(MAP.length-1)-myPos.y};
-            if (isAdjacentOrSame(myPos, opposite)) {
-                opposite = assignNewOpposite(myPos, MAP.length);
+            opposite = {x:(MAP.length-1)-agent.pos.x, y:(MAP.length-1)-agent.pos.y};
+            if (isAdjacentOrSame(agent.pos, opposite)) {
+                opposite = assignNewOpposite(agent.pos, MAP.length);
             }
         }
         
