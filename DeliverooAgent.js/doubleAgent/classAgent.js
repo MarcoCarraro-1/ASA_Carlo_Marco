@@ -35,5 +35,10 @@ export class Agent {
     {
         await this.client.say(id, msg)
     }
+
+    async shout(message)
+    {
+        await this.client.shout(message)
+    }
 }
 

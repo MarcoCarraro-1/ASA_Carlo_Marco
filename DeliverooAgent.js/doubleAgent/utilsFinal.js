@@ -3,7 +3,7 @@ let closestDelCell;     //cella deliverabile più vicina
 let agentsCallback;
 import {agent, client} from "./doubleAgentAlfaFinal.js";
 import {iAmNearer, tradeOff} from "./intentions_alfa.js";
-import {DEL_CELLS, MAP, BETA_NAME, PDDL, setArrivedToTarget, setBetaInfo, PARCEL_DECADING_INTERVAL} from "./globals_alfa.js";
+import {DEL_CELLS, MAP, BETA_NAME, PDDL, BOND_MESSAGE, setArrivedToTarget, setBetaName, PARCEL_DECADING_INTERVAL, DOUBLE_AGENT, DOUBLE_ID} from "./globals_alfa.js";
 
 export const counter = { countAttempts: 0};
 
@@ -440,44 +440,19 @@ export function assignOpposite(myPos, map){
     return myPos;
 }
 
+//this function connects the agents: one send the message, the other listens and then they connect
 export async function bondToDouble(otherAgents, senderName, senderId)
 {
-    //if it exists an agent named 'beta'
-    // let myName = myInfo.name;
-    if(otherAgents.find(candidateDouble=> candidateDouble.name === "beta") ){
-        let candidateDouble = otherAgents.find(candidateDouble=> candidateDouble.name === "beta");
-        // console.log("beta agent found with id: ", agent.id);
-        //verify if it's our beta
-        await agent.say(candidateDouble.id, "Are you my double agent?")
-        client.onMsg( (id, name, msg, reply) => {
-            // console.log("new msg received from",id, name +':', msg);
-            if (msg === 'yes') { //it is our beta
-                // console.log("beta is our double agent");
-                setBetaInfo(id, name);
-                let answer = 'hello '+ BETA_NAME + ', I am '+ senderName + senderId + '. We are now bonded for eternity';
-                console.log("my reply: ", answer);
-                if (reply){
-                    try { reply(answer) } catch { (error) => console.error(error) }
-                }
-                return true;
-            } 
-            else {
-                // console.log("beta is not our double agent");
-                return false;
-            }
-        });
-    }
-    else {
-        // console.log("No beta agent found");
-        return false;
-    }
+    // if it exists an agent named 'beta'
+        // verify if it's our beta
+        await agent.shout(BOND_MESSAGE)
 }
 
 function setAgentsCallback(callback) {
     agentsCallback = callback;
 }
 
-export function findTargetParcel(otherAgents, myPos, closestParcel, firstPath, parcels){
+export async function findTargetParcel(otherAgents, myPos, closestParcel, firstPath, parcels){
     let BFStoDel;
     let BFStoParcel;
     let targetParcel = null;
@@ -511,18 +486,27 @@ export function findTargetParcel(otherAgents, myPos, closestParcel, firstPath, p
         // if there is a dacading interval and if its worth to go pickup the parcel, the parcel become our target
         if(PARCEL_DECADING_INTERVAL!=Infinity){
             // console.log("inside PARCEL_DECADING_INTERVAL if");
+            //we check if it's worth it in term of points to pick up the parcel. If tradeOff is True, it's worth it
             if(!tradeOff(BFStoParcel.length, findClosestDelCell(closestParcel, DEL_CELLS), closestParcel.reward, agent.carriedPar.length)){
-                parcels = parcels.filter(parcel => parcel.id !== closestParcel.id);
+                parcels = parcels.filter(parcel => parcel.id !== closestParcel.id); //remove that parcel from the list of parcels to pick up
             }
         }
         if(iAmNearer(otherAgents, closestParcel, BFStoParcel)){
             targetParcel = closestParcel;
             // console.log("target parcel:", targetParcel);
+            if(DOUBLE_AGENT){ // if we are in the double agent scenario
+                if(doubleShouldPickUp()){
+                    //console.log("Double should pick up");
+                    await agent.say(DOUBLE_ID, (closestParcel.x, closestParcel.y)); //send to double position of his next target, we will search for another
+                    parcels = parcels.filter(parcel => parcel.id !== closestParcel.id); //remove that parcel from the list of parcels to pick up
+                }
+            }
         } else {
             //console.log("Opponent will steal ", closestParcel.id);
-            parcels = parcels.filter(parcel => parcel.id !== closestParcel.id);
+            parcels = parcels.filter(parcel => parcel.id !== closestParcel.id); //remove that parcel from the list of parcels to pick up
         }
     }
     // console.log("returning:", targetParcel, BFStoDel, BFStoParcel, firstPath, parcels);
     return [targetParcel, BFStoDel, BFStoParcel, firstPath, parcels];
 }
+

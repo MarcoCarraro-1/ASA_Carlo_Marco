@@ -1,6 +1,6 @@
 let delDists = [];      //distanza da celle deliverabili
 let closestDelCell;     //cella deliverabile più vicina
-import {move, putdown, pickup, client, say} from "./doubleAgentAlfa.js";
+import {move, putdown, pickup, client, say} from "./doubleAgentMain.js";
 import {DEL_CELLS, MAP, BETA_NAME, setArrivedToTarget, setBetaInfo} from "./globals_alfa.js";
 var carriedPar = [];
 

@@ -2,15 +2,12 @@ import { default as config } from "./config.js";
 import { DeliverooApi, timer } from "@unitn-asa/deliveroo-js-client";
 import {createMap, updateCarriedPar, getCarriedPar, emptyCarriedPar, moveTo, findFurtherPos, iAmOnDelCell,
         iAmOnParcel, getMinCarriedValue, isAdjacentOrSame, assignNewOpposite, executePddlAction,
-        checkPos, assignOpposite, checkCondition, counter, getRandomCoordinate, findTargetParcel} from "./utilsFinal.js";
+        checkPos, assignOpposite, checkCondition, counter, getRandomCoordinate, findTargetParcel,
+        bondToDouble} from "./utilsFinal.js";
 import { generatePlanWithPddl } from "../PddlParser.js";
-import {DEL_CELLS, MAP, ARRIVED_TO_TARGET, DELIVERED, setMap, setArrivedToTarget, setDelivered, setParcelDecadingInterval} from"./globals_alfa.js";
+import {DEL_CELLS, MAP, ARRIVED_TO_TARGET, DELIVERED, 
+    setMessageReceived, setMap, setArrivedToTarget, setDelivered, setParcelDecadingInterval, setDoubleAgent} from"./globals_alfa.js";
 import {Agent} from './classAgent.js';
-
-export const client = new DeliverooApi( config.host, config.token_alfa )
-client.onConnect( () => console.log("socket", client.socket.id ) );
-client.onDisconnect( () => console.log( "disconnected", client.socket.id ) );
-export const agent = new Agent(client)
 
 var closestParcel;      //cella con pacchetto libero più vicina
 var targetParcel = null;       //cella con pacchetto obiettivo
@@ -25,6 +22,26 @@ var BFStoDel;
 var BFStoOpposite;
 var opposite;
 let pddlPlan=undefined;
+let token;
+
+if (process.argv[2] === 'alfa'){
+    setDoubleAgent(true);
+    console.log("I'm agent ALfa");
+    token = config.token_alfa;
+} else if (process.argv[2] === 'beta'){
+    setDoubleAgent(true);
+    console.log("I'm agent Beta");
+    token = config.token_beta;
+} else {
+    setDoubleAgent(false);
+    console.log("I'm single agent");
+    token = config.token_alfa;
+}
+
+export const client = new DeliverooApi( config.host, token);
+client.onConnect( () => console.log("socket", client.socket.id ) );
+client.onDisconnect( () => console.log( "disconnected", client.socket.id ) );
+export const agent = new Agent(client)
 
 //get name, id and position of the agent
 agent.assignOnYouInfo();
@@ -60,12 +77,10 @@ client.onParcelsSensing((p)=> {
         }
     })
 
-client.onMsg( (id, name, msg, reply) => {
-    console.log("new msg received from", id, name+':', msg);
-    let answer = 'hello ' + name + ', here is reply.js as ' + me.name + '. Do you need anything?';
-    console.log("my reply: ", answer);
-    if (reply)
-        try { reply(answer) } catch { (error) => console.error(error)}
+client.onMsg( (senderId, senderName, msg) => {
+    console.log("new msg received from", senderId, senderName + ':', msg);
+    setMessageReceived(true);
+    handleMessage(senderId, msg);
 });
 
 async function agentLoop(){
@@ -75,20 +90,29 @@ async function agentLoop(){
             await timer( 20 );
         }
 
+        if(agent.name === 'beta'){
+            // console.log("inside beta if");
+        }
+        if(agent.name === 'alfa'){
+            // console.log("inside alfa if");
+            await bondToDouble(otherAgents, agent.name, agent.id);
+        }
+
         await agent.pickup(); //spamming pickup
         
         // we search for a parcel to pickup between the ones we see
         if(targetParcel==null){
-            // console.log("look for target");
+            console.log("look for target");
+            console.log("target is null");
             // console.log("here7");
 
             [targetParcel, BFStoDel, BFStoParcel, firstPath, parcels] = findTargetParcel(otherAgents, agent.pos, closestParcel, firstPath, parcels);
-            console.log("first findTargetParcel()");
-            console.log("returned targetParcel: ", targetParcel); 
-            console.log("returned BFStoDel: ", BFStoDel)
-            console.log("returned BFStoParcel: ", BFStoParcel) 
-            console.log("returned firstPath: ", firstPath)
-            console.log("returned parcels: ", parcels);
+            // console.log("first findTargetParcel()");
+            // console.log("returned targetParcel: ", targetParcel); 
+            // console.log("returned BFStoDel: ", BFStoDel)
+            // console.log("returned BFStoParcel: ", BFStoParcel) 
+            // console.log("returned firstPath: ", firstPath)
+            console.log("returned parcels: ", parcels, parcels.length);
         }
         
         //
@@ -132,7 +156,7 @@ async function agentLoop(){
 
             if(targetParcel==null){
                 // console.log("no target parcel");
-                if(!DELIVERED ){
+                if(!DELIVERED){
                     // console.log("go to del subitooooo");
                     agent.pos = checkPos(agent.pos.x, agent.pos.y);
                     await moveTo(agent.pos, BFStoDel);
@@ -390,15 +414,12 @@ async function agentLoop_pddl(){
 }
 
 function startGame() {
-    
     counter.countAttempts=0;
     if (process.argv[2] === 'pddl') {
         agentLoop_pddl();
     } else {
         agentLoop();
     }
-
 }
 
 startGame();
-// Your code here

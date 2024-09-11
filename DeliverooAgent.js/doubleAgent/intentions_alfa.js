@@ -1,6 +1,8 @@
 import { shortestPathBFS } from "./utilsFinal.js"
-import { MAP, PARCEL_DECADING_INTERVAL } from "./globals_alfa.js"
+import { MAP, PARCEL_DECADING_INTERVAL, DOUBLE_ID, BOND_MESSAGE, setDoubleId} from "./globals_alfa.js"
+import {agent} from "./doubleAgentAlfaFinal.js"
 
+//we check if it's worth in term of points to pick one parcel
 export function tradeOff (distanceToParcel, parcelDistanceToDel, nearestDelDistToMe, parcelVal, carriedParLength)
 {
     let valueWhenPicked =  parcelVal - (distanceToParcel * PARCEL_DECADING_INTERVAL); //the value of the parcel when picked up
@@ -38,8 +40,17 @@ export function iAmNearer(otherAgents, position, BFStoPosition) {//check if I am
     return true;
 }
 
-export function msgCreator( )
+
+
+export function handleMessage(senderId, msg)
 {
+    if(msg === BOND_MESSAGE){ //if Beta receives the bond message from Alfa it aknowledges it. Only Beta can receive this message
+        agent.say(senderId, "I am Beta, we are now bonded for eternity"); //Beta's answer
+        setDoubleId(senderId); //Beta saves Alfa's id
+    }
+    if(msg === "I am Beta, we are now bonded for eternity"){ //if Alfa receives the aknowledgement, it saves Beta's id
+        setDoubleId(senderId);
+    }
 
 }
 
