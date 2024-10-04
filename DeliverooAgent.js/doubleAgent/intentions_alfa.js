@@ -23,7 +23,7 @@ export function tradeOff (distanceToPar, distanceToDel, nearestDelDist, parcelVa
                 //perdita per consegnare quelle già trasportate, va a prenderla
 }
 
-export function iAmNearer(otherAgents, parcel, BFStoParcel) //se un altro agente è più vicino alla parcel
+export function iAmNearer(otherAgents, position, BFStoParcel) //se un altro agente è più vicino alla parcel
 {                                           //lascio perdere la parcel
     let check = true;
     let minDistance;
@@ -31,7 +31,7 @@ export function iAmNearer(otherAgents, parcel, BFStoParcel) //se un altro agente
         minDistance = BFStoParcel.length;
         otherAgents.forEach(agent => {
             let agentPos = {x: agent.x, y: agent.y};
-            if(shortestPathBFS(agentPos.x, agentPos.y, parcel.x, parcel.y, map).length < minDistance){
+            if(shortestPathBFS(agentPos.x, agentPos.y, position.x, position.y, map).length < minDistance){
                 check=false;
             }
         })
