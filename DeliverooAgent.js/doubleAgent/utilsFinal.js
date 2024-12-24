@@ -2,8 +2,8 @@ let delDists = [];      //distanza da celle deliverabili
 let closestDelCell;     //cella deliverabile più vicina
 let agentsCallback;
 import {agent, client} from "./doubleAgentAlfaFinal.js";
-import {iAmNearer, tradeOff} from "./intentions_alfa.js";
-import {DEL_CELLS, MAP, BETA_NAME, PDDL, BOND_MESSAGE, setArrivedToTarget, setBetaName, PARCEL_DECADING_INTERVAL, DOUBLE_AGENT, DOUBLE_ID} from "./globals_alfa.js";
+import {iAmNearer, tradeOff, doubleShouldPickUp} from "./parcel_choosing.js";
+import {DEL_CELLS, MAP, PDDL, BOND_MESSAGE, setArrivedToTarget, PARCEL_DECADING_INTERVAL, DOUBLE_AGENT, RESPONSE, DOUBLE, setResponse} from "./globals_alfa.js";
 
 export const counter = { countAttempts: 0};
 
@@ -33,13 +33,13 @@ export function createMap (width, height, tiles)
 const dx = [-1, 1, 0, 0];
 const dy = [0, 0, -1, 1];
 
-// Define BFS function
-export function shortestPathBFS(startX, startY, endX, endY, map) {
+// Define BFS function. It search via BFS the shortest path between two points
+export function shortestPathBFS(startX, startY, endX, endY) {
     startX = Math.floor(startX);
     startY = Math.floor(startY);
     let queue = [];
-    let visited = Array.from({ length: map.length }, () => Array(map[0].length).fill(false));
-    let prev = Array.from({ length: map.length }, () => Array(map[0].length));
+    let visited = Array.from({ length: MAP.length }, () => Array(MAP[0].length).fill(false));
+    let prev = Array.from({ length: MAP.length }, () => Array(MAP[0].length));
 
     // Push the starting point to the queue
     queue.push({ x: startX, y: startY });
@@ -70,7 +70,7 @@ export function shortestPathBFS(startX, startY, endX, endY, map) {
             const ny = y + dy[i];
 
             // Check if the neighboring cell is within bounds and not visited
-            if (nx >= 0 && nx < map.length && ny >= 0 && ny < map[0].length && !visited[nx][ny] && map[nx][ny] !== 0 && map[nx][ny] !== undefined) {
+            if (nx >= 0 && nx < MAP.length && ny >= 0 && ny < MAP[0].length && !visited[nx][ny] && MAP[nx][ny] !== 0 && MAP[nx][ny] !== undefined) {
                 queue.push({ x: nx, y: ny });
                 visited[nx][ny] = true;
                 prev[nx][ny] = { prevX: x, prevY: y };
@@ -113,7 +113,7 @@ export function delDistances(myPos, delCell){     //valuta la distanza tra posiz
 
 export async function delivery(myPos){                   //calcola il percorso per arrivare alla delivery cell più vicina e muove l'agente
     closestDelCell = delDistances(myPos, DEL_CELLS);
-    let shortestPath = shortestPathBFS(myPos.x, myPos.y, closestDelCell.x, closestDelCell.y, MAP);
+    let shortestPath = shortestPathBFS(myPos.x, myPos.y, closestDelCell.x, closestDelCell.y);
     let direction = nextMove(myPos,shortestPath);
     
     if(direction === 'same'){
@@ -134,7 +134,7 @@ export function findClosestParcel(myPos, parcels) {    //compute the distance be
     
     for (let i = 0; i < parcels.length; i++) {
         try{
-            let path = shortestPathBFS(myPos.x, myPos.y, parcels[i].x, parcels[i].y, MAP); //breadth-first search distance between my position and the parcel
+            let path = shortestPathBFS(myPos.x, myPos.y, parcels[i].x, parcels[i].y); //breadth-first search distance between my position and the parcel
             
             // we search for the closest parcel
             if ((path.length < closestDistance)) { 
@@ -164,7 +164,7 @@ export function findClosestDelCell(myPos, delCellsArray) {    //evaluate distanc
     for (let i = 0; i < DEL_CELLS.length; i++) {
         //console.log("[i].x", delCell[i].x);
         //console.log("delCell[i].y", delCell[i].y);
-        let path = shortestPathBFS(myPos.x, myPos.y, DEL_CELLS[i].x, DEL_CELLS[i].y, MAP);
+        let path = shortestPathBFS(myPos.x, myPos.y, DEL_CELLS[i].x, DEL_CELLS[i].y);
         try{
             if ((path.length < closestDistance)) {
                 delCell = DEL_CELLS[i];
@@ -216,11 +216,11 @@ export function findFurtherPos(myPos, cells) {
             cells.y = MAP[0].length;
         }
 
-        path = shortestPathBFS(Math.round(myPos.x), Math.round(myPos.y), cells.x, cells.y, MAP);
+        path = shortestPathBFS(Math.round(myPos.x), Math.round(myPos.y), cells.x, cells.y);
 
         if(counter.countAttempts>50){
             // console.log("Forcing path");
-            path = shortestPathBFS(Math.round(myPos.x), Math.round(myPos.y), Math.round(myPos.x), 0, MAP);
+            path = shortestPathBFS(Math.round(myPos.x), Math.round(myPos.y), Math.round(myPos.x), 0);
             counter.countAttempts=0;
         }
 
@@ -245,21 +245,21 @@ export function isDel(delCellsList, pos) {
     return false; // No matching object found
 }
 
-export function nextMove(myPos, shortestPath){
+export async function nextMove(myPos, shortestPath){
 
     shortestPath.shift();
     try{
-        const nextStep = shortestPath[0]; //shortestPath[0] è la posizione attuale
+        const nextStep = shortestPath[0]; //shortestPath[0] is the position to reach
         // console.log("next step in nextMove:",nextStep);
         if (nextStep.x < myPos.x) {
             return 'left';
-        } else if (nextStep.x > myPos.x) {
+        } else if (nextStep.y > myPos.y) {
+            return 'up';
+        }else if (nextStep.x > myPos.x) {
             return 'right';
         } else if (nextStep.y < myPos.y) {
             return 'down';
-        } else if (nextStep.y > myPos.y) {
-            return 'up';
-        }
+        } 
     } catch (error) {
         return 'same';
     }
@@ -269,13 +269,13 @@ export async function moveTo(myPos, path){
     // console.log("myPos in moveTo",myPos);
     // console.log("path in moveTo", path);
     try{
-        if(path[1]==myPos){
+        if(path[1]==myPos){ // if the next cell on the path is my actual position I remove that cell from the path and we move to the next one on the path
             path.shift();
         }
     }catch{
         console.log("path is empty");
     }
-    let direction = nextMove(myPos, path);
+    let direction = await nextMove(myPos, path);
     // console.log("next dir: ", direction);
     // console.log("myPos", myPos);
     client.onYou;
@@ -283,6 +283,7 @@ export async function moveTo(myPos, path){
     if(direction === 'same' || direction === undefined){
         //console.log("arrivatooooooooooooooooooooooooooooo");
         setArrivedToTarget(true);
+        // console.log("arrived to target");
     } else {
         await agent.move(direction);
     }
@@ -310,7 +311,7 @@ export function getCarriedValue(){
     return totalReward;
 }
 
-export function emptyCarriedPar(){
+export async function emptyCarriedPar(){
     agent.carriedParcels = [];
 }
 
@@ -340,12 +341,15 @@ export function getMinCarriedValue(){
 }
 
 export function isAdjacentOrSame(pos1, pos2) {
+    // console.log("pos1", pos1);
     let dx = Math.abs(pos1.x - pos2.x);
     let dy = Math.abs(pos1.y - pos2.y);
 
     if(dx <= 2 && dy <= 2){
+        // console.log("Returning True");
         return true;
     } else {
+        // console.log("Returning False");
         return false;
     }
 }
@@ -396,15 +400,9 @@ export async function executePddlAction(action) {
 }
 
 export function checkPos(x, y){
-    let newx = x;
-    let newy = y;
-    if (!Number.isInteger(x)) {
-        newx = Math.floor(x);
-    }
-    if (!Number.isInteger(y)) {
-        newy = Math.floor(y);
-    }
-
+    let newx = Math.floor(x);
+    let newy = Math.floor(y);
+    
     return { x: newx, y: newy };
 }
 
@@ -441,49 +439,62 @@ export function assignOpposite(myPos, map){
 }
 
 //this function connects the agents: one send the message, the other listens and then they connect
-export async function bondToDouble(otherAgents, senderName, senderId)
-{
-    // if it exists an agent named 'beta'
-        // verify if it's our beta
-        await agent.shout(BOND_MESSAGE)
+export async function bondToDouble()
+{   
+    console.log("inside bondToDouble");
+    console.log(agent.name);
+    if(agent.name === "alfa"){
+        console.log("I'm the Alfa agent, Beta tell me your id");
+        await agent.shout(BOND_MESSAGE);
+    }
 }
 
-function setAgentsCallback(callback) {
-    agentsCallback = callback;
-}
+// function setAgentsCallback(callback) {
+//     agentsCallback = callback;
+// }
 
 export async function findTargetParcel(otherAgents, myPos, closestParcel, firstPath, parcels){
+    // console.log("inside definition of findTargetParcel");
     let BFStoDel;
     let BFStoParcel;
     let targetParcel = null;
+    if(RESPONSE !== undefined && RESPONSE.includes("target parcel")){   // if the double agent has given to this agent a target, we go to pick it up
+        target_info = RESPONSE.split(" ");
+        try {targetParcel = parcels.filter(parcel => parcel.id === target_info[2])[0]; //we search for the target parcel in the list of parcels
+        setResponse("no response");
+        } catch {
+            moveTo(myPos, shortestPathBFS(myPos.x, myPos.y, target_info[3] ,target_info[4])); //if the target is not in the list of parcels we move to the position of the target
+        }
+    }
     [closestDelCell, BFStoDel] = findClosestDelCell(myPos, DEL_CELLS); //we find the closest delivery cell to our current position
     // if(closestDelCell)
     // {
-        // console.log("closestDelCell", closestDelCell);
-        // console.log("BFStoDel", BFStoDel);
-        // console.log("DELL_CELLS:", DEL_CELLS)
-        // console.log("parcels:", parcels);
+    //     console.log("closestDelCell", closestDelCell);
+    //     console.log("BFStoDel", BFStoDel);
+    //     console.log("DELL_CELLS:", DEL_CELLS)
+    //     console.log("parcels:", parcels);
     // }
-    while(parcels.length > 0 && targetParcel==null){ //while there are parcels in our sight and we haven't found a target parcel
+    while(parcels.length > 0 && targetParcel==null){ //while there are parcels in our sight and we haven't found a target parcel, we search for one
         // console.log("inside parcels.length while");
         [closestParcel, BFStoParcel] = findClosestParcel(myPos, parcels); //find closest parcel to us, return it and
                                                                           //the path to reach it
-        if(closestParcel==null){
-            //empty the parcels array if there are no more parcels
+        if(closestParcel==null){ // empty the parcels array if there are no more parcels
+            console.log("closestParcel == null");
             parcels.length=0;
         }
+        // console.log("closestParcel", closestParcel);
         
         if(firstPath==null){
             firstPath = BFStoParcel;
             // console.log("firstPath", firstPath);
         }
 
-        setAgentsCallback((agents) => {
-            // console.log("Opponents in FOW: ", otherAgents.length);
-            // console.log("Opponents ids: ", otherAgents.map(agent => agent.id));
-        });
+        // setAgentsCallback((agents) => {
+        //     console.log("Opponents in FOW: ", otherAgents.length);
+        //     console.log("Opponents ids: ", otherAgents.map(agent => agent.id));
+        // });
 
-        // if there is a dacading interval and if its worth to go pickup the parcel, the parcel become our target
+        // if there is a dacading interval and if its worth to go pickup the parcel, the parcel can become our target
         if(PARCEL_DECADING_INTERVAL!=Infinity){
             // console.log("inside PARCEL_DECADING_INTERVAL if");
             //we check if it's worth it in term of points to pick up the parcel. If tradeOff is True, it's worth it
@@ -491,16 +502,32 @@ export async function findTargetParcel(otherAgents, myPos, closestParcel, firstP
                 parcels = parcels.filter(parcel => parcel.id !== closestParcel.id); //remove that parcel from the list of parcels to pick up
             }
         }
-        if(iAmNearer(otherAgents, closestParcel, BFStoParcel)){
-            targetParcel = closestParcel;
-            // console.log("target parcel:", targetParcel);
+        if(iAmNearer((agent.pos.x, agent.pos.y),otherAgents, closestParcel, BFStoParcel)){
+            // console.log("closest parcel:", closestParcel);
             if(DOUBLE_AGENT){ // if we are in the double agent scenario
-                if(doubleShouldPickUp()){
-                    //console.log("Double should pick up");
-                    await agent.say(DOUBLE_ID, (closestParcel.x, closestParcel.y)); //send to double position of his next target, we will search for another
-                    parcels = parcels.filter(parcel => parcel.id !== closestParcel.id); //remove that parcel from the list of parcels to pick up
+                // console.log("Double agent");
+                var parcelsCopy = [...parcels]; 
+                agent.say(DOUBLE.id, ("do you have a target?")); //ask the double if he has a target
+                // console.log("asking double if he has a target");
+                if(RESPONSE === "i don't have a target"){       //If the double has a target, we won't assign him one
+                    console.log("Double has no target");
+                    if(doubleShouldPickUp(parcelsCopy, myPos, DOUBLE.pos, closestParcel, otherAgents)){ // if it's convenient for the fdouble to pick up and
+                        // console.log("Double should pick up");                                       // we communicate the parcel info to the double and we remove it from our the list of parcels
+                        await agent.say(DOUBLE.id, ("pick that " + closestParcel.id + " " + closestParcel.x + " " + closestParcel.y)); //send to double position of his next target, we will search for another
+                        parcels = parcels.filter(parcel => parcel.id !== closestParcel.id); //remove that parcel from the list of parcels to pick up
+                    } else {
+                        console.log("Double should not pick up");
+                        targetParcel = closestParcel;
+                    }
+                    setResponse("no response");
+                } else {
+                    targetParcel = closestParcel;
                 }
+            } else {
+                targetParcel = closestParcel;
+                console.log("targetParcel", targetParcel);
             }
+            // targetParcel = closestParcel;
         } else {
             //console.log("Opponent will steal ", closestParcel.id);
             parcels = parcels.filter(parcel => parcel.id !== closestParcel.id); //remove that parcel from the list of parcels to pick up
@@ -508,5 +535,12 @@ export async function findTargetParcel(otherAgents, myPos, closestParcel, firstP
     }
     // console.log("returning:", targetParcel, BFStoDel, BFStoParcel, firstPath, parcels);
     return [targetParcel, BFStoDel, BFStoParcel, firstPath, parcels];
+}
+
+export async function blockedByAgent(otherAgents)
+{
+    if(isAdjacentOrSame(agent.pos, otherAgents[0].pos)){
+        // console.log("I'm blocked by an agent");
+    }
 }
 

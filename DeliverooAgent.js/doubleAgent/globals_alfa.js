@@ -2,13 +2,14 @@ export let DEL_CELLS = []; //cells where we can deliver
 export let ARRIVED_TO_TARGET = false;
 export let MAP = [];
 export let DELIVERED = true;
-export let DOUBLE_ID = null;
 export let PDDL = false;
 export let PARCEL_DECADING_INTERVAL;
 export let BOND_MESSAGE = "I'm the Alfa agent, Beta tell me your id";
 export let MESSAGE_RECEIVED = false;
 export let DOUBLE_AGENT = false;
-export let BETA_NAME
+export let ATTEMPT_COUNTER = { countAttempts: 0};
+export let RESPONSE = "no response";
+export let DOUBLE = {id: null, pos: null, parcels: null};
 
 export function setMap(map){
     MAP = map;
@@ -58,9 +59,20 @@ export function setMessageReceived(value){
 }
 
 export function setDoubleId(value){
-    DOUBLE_ID = value;
+    DOUBLE.id = value;
 }
 
+export function setDoubleParcels(value){
+    DOUBLE.parcels = value;
+}
+
+export function setDoublePos(value){
+    DOUBLE.pos = value;
+}
 export function setDoubleAgent(value){
     DOUBLE_AGENT = value;
+}
+
+export function setResponse(value){
+    RESPONSE = value;
 }

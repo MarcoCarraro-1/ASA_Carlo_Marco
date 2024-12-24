@@ -177,11 +177,6 @@ async function agentLoop(){
             //console.log("here7");
             findTargetParcel();
         }
-
-        if(targetParcel==null){
-            //console.log("NO TARGET PARCEL");
-        }
-        
         
         while(!arrivedTarget){
             while(parcels==undefined){
@@ -216,9 +211,9 @@ async function agentLoop(){
                 if(!delivered){
                     myPos = checkPos(myPos.x, myPos.y);
                     await moveTo(myPos,BFStoDel);
-                    let tempTarget = BFStoDel[BFStoDel.length-1]; 
+                    let tempTarget = BFStoDel[BFStoDel.length-1]; // tempTarget is the last cell of the path, so the actual target?
                     
-                    try{
+                    try{ // if i am failing to reach the target, i count the reaching attempts
                         if(isAdjacentOrSame(myPos, tempTarget)){
                             delCounter.countAttempts++;
                         }
@@ -328,9 +323,7 @@ async function agentLoop(){
             }
             //console.log("checking arrived:",arrivedTarget);
         }
-
         
-
         if(iAmOnParcel(myPos, parcels)){
             setDelivered(false);
             updateCarriedPar(targetParcel);
