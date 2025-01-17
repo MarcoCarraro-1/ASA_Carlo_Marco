@@ -5,10 +5,9 @@ export class Agent {
         this.pos = null;
         this.carriedParcels = [];
         this.doubleId = null;
-        this.delCellsDists = [] //distances from the delivery cells
-        this.closestDelCell = null; //position of the closest delivery cell
     }
-    assignOnYouInfo(){
+    assignOnYouInfo()
+    {
         this.client.onYou((info) => {
         this.pos = {x: info.x, y: info.y};
         this.id = info.id;
@@ -16,18 +15,32 @@ export class Agent {
         // console.log("Assigned info");
         });
     }
+    assignCarriedParcels()
+    {
+        this.client.onCarryParcel((info) => {
+        this.carriedParcels.push(info);
+        // console.log("Assigned carried parcels");
+        });
+    }
     async move ( direction ) 
     {
+        // console.log("move direction: ", direction);
         await this.client.move( direction ) 
     }
     
     async pickup (  ) 
     {
-        await this.client.pickup();
+        let picked = await this.client.pickup();
+        // console.log("pickup");
+        if(picked.length > 0)
+        {
+            this.carriedParcels.push(picked[0]);
+        }
     }
 
     async putdown (  ) 
     {
+        console.log("putdown");
         await this.client.putdown();
     }
 

@@ -1,15 +1,17 @@
 import { shortestPathBFS, findClosestParcel } from "./utilsFinal.js"
-import { MAP, PARCEL_DECADING_INTERVAL, BOND_MESSAGE, DOUBLE, setDoubleId} from "./globals_alfa.js"
-import {agent} from "./doubleAgentAlfaFinal.js"
+import { MAP, PARCEL_DECADING_INTERVAL, BOND_MESSAGE, DOUBLE, setDoubleId} from "./globals.js"
+import {agent} from "./doubleAgentFinal.js"
 import {timer} from "@unitn-asa/deliveroo-js-client";
 
 //we check if it's worth in term of points to pick one parcel
-export function tradeOff (distanceToParcel, parcelDistanceToDel, nearestDelDistToMe, parcelVal, carriedParLength)
+export function tradeOff (distanceToParcel, parcelDistanceToDel, nearestDelDistToMe, parcel, carriedParLength)
 {
-    let valueWhenPicked =  parcelVal - (distanceToParcel * PARCEL_DECADING_INTERVAL); //the value of the parcel when picked up
-                                                                                    //assuming every step take 1 unit of value 
+    // console.log("inside tradeOff");
+    let valueWhenPicked =  parcel.reward - (distanceToParcel * PARCEL_DECADING_INTERVAL); //the value of the parcel when picked up
+                                                                                    //assuming every step take 1 unit of value
+    console.log("value of", parcel, " when picked: ", valueWhenPicked);
     if(valueWhenPicked <= 0){
-        //console.log("value when picked <0");
+        console.log("value when picked <0");
         return false;
     }
     

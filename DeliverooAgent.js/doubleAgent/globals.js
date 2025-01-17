@@ -16,6 +16,11 @@ export function setMap(map){
     // console.log("MAP", MAP);
 }
 
+export function rotateDeliveryCells()
+{
+    DEL_CELLS = [DEL_CELLS[DEL_CELLS.length-1], ...DEL_CELLS.slice(0, DEL_CELLS.length-1)];
+    console.log("rotated DEL_CELLS: ", DEL_CELLS);
+}
 export function setArrivedToTarget(value) {
     ARRIVED_TO_TARGET = value;
 }
