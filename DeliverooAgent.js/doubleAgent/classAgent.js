@@ -5,7 +5,10 @@ export class Agent {
         this.pos = null;
         this.carriedParcels = [];
         this.doubleId = null;
+        this.target = null;
+        this.failedMovement = 0;
     }
+
     assignOnYouInfo()
     {
         this.client.onYou((info) => {
@@ -15,6 +18,7 @@ export class Agent {
         // console.log("Assigned info");
         });
     }
+    
     assignCarriedParcels()
     {
         this.client.onCarryParcel((info) => {
@@ -22,10 +26,44 @@ export class Agent {
         // console.log("Assigned carried parcels");
         });
     }
+
+    assignTarget(target)
+    {
+        this.target = target;
+    }
+
     async move ( direction ) 
     {
-        // console.log("move direction: ", direction);
-        await this.client.move( direction ) 
+        if(await this.client.move(direction) == false)
+        {
+            console.log("Failed to move");
+            this.failedMovement++;
+            if(this.failedMovement >= 3) 
+            {
+                console.log("Failed to move 3 times in a row"); // if the agent fails to move 3 times in a row it will try to move in another direction
+                if(direction == "up")
+                {
+                    await this.client.move("right");
+                }
+                else if(direction == "right")
+                {
+                    await this.client.move("down");
+                }
+                else if(direction == "down")
+                {
+                    await this.client.move("left");
+                }
+                else if(direction == "left")
+                {
+                    await this.client.move("up");
+                }
+                return false;
+            }
+        }
+        else
+        {
+            this.failedMovement = 0; 
+        }  
     }
     
     async pickup (  ) 
@@ -40,7 +78,7 @@ export class Agent {
 
     async putdown (  ) 
     {
-        console.log("putdown");
+        // console.log("putdown");
         await this.client.putdown();
     }
 

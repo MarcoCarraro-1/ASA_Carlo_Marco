@@ -1,4 +1,4 @@
-import { shortestPathBFS, findClosestParcel } from "./utilsFinal.js"
+import { shortestPathBFS, findClosestParcel, isAdjacentOrSame } from "./utilsFinal.js"
 import { MAP, PARCEL_DECADING_INTERVAL, BOND_MESSAGE, DOUBLE, setDoubleId} from "./globals.js"
 import {agent} from "./doubleAgentFinal.js"
 import {timer} from "@unitn-asa/deliveroo-js-client";
@@ -69,32 +69,50 @@ export function doubleShouldPickUp(parcels, myPos, doublePos, myTargetParcel, ot
 
 export function messageHandler(senderId, msg)
 {
-    if(msg === BOND_MESSAGE){ //if Beta receives the bond message from Alfa it aknowledges it. Only Beta can receive this message
+    if(msg === BOND_MESSAGE) //if Beta receives the bond message from Alfa it aknowledges it. Only Beta can receive this message
+    { 
         agent.say(senderId, "I am Beta, we are now bonded for eternity", agent.pos.x, agent.pos.y); //Beta's answer
         // console.log("I am Beta. Bonding completed");
         setDoubleId(senderId); //Beta saves Alfa's id
         return "bonded";
     }
-    if(msg === "I am Beta, we are now bonded for eternity"){ //if Alfa receives the aknowledgement, it saves Beta's id
-        setDoubleId(senderId);
+    if(msg === "I am Beta, we are now bonded for eternity") //if Alfa receives the aknowledgement, it saves Beta's id
+    { 
+        setDoubleId(senderId); //Alfa saves Beta's id
+        agent.say(senderId, "I am alfa, bonding message received")
         // console.log("I am Alfa. Bonding completed");
         return "bonded";
     }
-    if(msg === "do you have a target?"){ // 
-        if(agent.target){
+
+    if(msg === "do you have a target?")
+    { 
+        if(agent.target)
+        {
             agent.say(DOUBLE.id, "i have a target");
             return "i have a target";
         }
-        else{
+        else
+        {
             agent.say(DOUBLE.id, "i don't have a target");
             return "i don't have a target";
         }
-        
     }
-    if(msg.includes("pick that")) { //if one agent receives a message from the double to pick up a parcel
+
+    if(msg.includes("pick that")) //if one agent receives a message from the double to pick up a parcel
+    { 
         let parcel_info = msg.split(" ");
         return "target parcel " + parcel_info[2] + " " + parcel_info[3] + " " + parcel_info[4];
     }
     
+    if(msg.includes("blocked"))
+    {
+        pos = msg.split(" ");
+        x = parseInt(pos[1]);
+        y = parseInt(pos[2]);
+        if(isAdjacentOrSame(agent.pos, {x: x, y: y}))
+        {
+            return "blocked";
+        }
+    }
 }
 

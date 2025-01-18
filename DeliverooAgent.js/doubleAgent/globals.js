@@ -8,7 +8,10 @@ export let BOND_MESSAGE = "I'm the Alfa agent, Beta tell me your id";
 export let MESSAGE_RECEIVED = false;
 export let DOUBLE_AGENT = false;
 export let ATTEMPT_COUNTER = { countAttempts: 0};
-export let RESPONSE = "no response";
+export let I_GOT_TARGET_RESPONSE = false;
+export let TARGET_RESPONSE = "no target";
+export let BLOCKED_RESPONSE = false;
+export let RESPONSE = false;
 export let DOUBLE = {id: null, pos: null, parcels: null};
 
 export function setMap(map){
@@ -19,7 +22,7 @@ export function setMap(map){
 export function rotateDeliveryCells()
 {
     DEL_CELLS = [DEL_CELLS[DEL_CELLS.length-1], ...DEL_CELLS.slice(0, DEL_CELLS.length-1)];
-    console.log("rotated DEL_CELLS: ", DEL_CELLS);
+    // console.log("rotated DEL_CELLS: ", DEL_CELLS);
 }
 export function setArrivedToTarget(value) {
     ARRIVED_TO_TARGET = value;
@@ -79,5 +82,34 @@ export function setDoubleAgent(value){
 }
 
 export function setResponse(value){
-    RESPONSE = value;
+    console.log("Response in setResponse: ", value);
+    if(value !== undefined && value.includes("target parcel"))
+    {
+        TARGET_RESPONSE = value;
+    }
+    else
+    {
+        switch(value) 
+        {
+            case "i have a target":
+                I_GOT_TARGET_RESPONSE = true;
+                break;
+            case "i don't have a target":
+                I_GOT_TARGET_RESPONSE = false;
+                break;
+            case "no target":
+                TARGET_RESPONSE = "no target";
+                break;
+            case "blocked":
+                BLOCKED_RESPONSE = true;
+                break;
+            case "sblocked":
+                BLOCKED_RESPONSE = false;
+                break;
+            case "bonded":
+                break;
+            default:
+                console.warn("Error in response:", value);
+        }
+    }
 }
