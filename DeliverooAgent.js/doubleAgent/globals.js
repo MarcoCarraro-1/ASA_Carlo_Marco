@@ -87,6 +87,10 @@ export function setResponse(value){
     {
         TARGET_RESPONSE = value;
     }
+    else if(value !== undefined && value.includes("blocked"))
+    {
+        BLOCKED_RESPONSE = value;
+    }
     else
     {
         switch(value) 
@@ -99,9 +103,6 @@ export function setResponse(value){
                 break;
             case "no target":
                 TARGET_RESPONSE = "no target";
-                break;
-            case "blocked":
-                BLOCKED_RESPONSE = true;
                 break;
             case "sblocked":
                 BLOCKED_RESPONSE = false;

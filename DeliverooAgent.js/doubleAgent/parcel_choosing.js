@@ -111,7 +111,7 @@ export function messageHandler(senderId, msg)
         y = parseInt(pos[2]);
         if(isAdjacentOrSame(agent.pos, {x: x, y: y}))
         {
-            return "blocked";
+            return "blocked" + " " + x + " " + y;
         }
     }
 }

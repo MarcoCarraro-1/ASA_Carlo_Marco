@@ -1,6 +1,5 @@
 let delDists = [];      //distanza da celle deliverabili
 let closestDelCell;     //cella deliverabile più vicina
-let agentsCallback;
 import {agent, client} from "./doubleAgentFinal.js";
 import {iAmNearer, tradeOff, doubleShouldPickUp} from "./parcel_choosing.js";
 import {DEL_CELLS, MAP, PDDL, BOND_MESSAGE, setArrivedToTarget, PARCEL_DECADING_INTERVAL, DOUBLE_AGENT, 
@@ -84,7 +83,8 @@ export function shortestPathBFS(startX, startY, endX, endY) {
     return null;
 }
 
-export function manhattanDist(pos, cells) {       //valuta la manhattan distance tra posizione attuale e insieme di celle
+export function manhattanDist(pos, cells) //valuta la manhattan distance tra posizione attuale e insieme di celle
+{   
     let distances = [];
 
     try{
@@ -127,9 +127,14 @@ export async function delivery(myPos){                   //calcola il percorso p
     {
         if(await agent.move(direction) == false) //we are blocked by someone or something
         {
-            if(agent.doubleId && blockedByDouble(agent.doubleId)) // if our double is blocking us, we putdown and go in the opposite direction to let him pick up
+            if(agent.doubleId && blockedByDouble(agent.doubleId)) // if our double is blocking us and he is nearer to a delivery cell, we putdown and go in the opposite direction to let him pick up
             {
-                await agent.putdown();
+                let doublePos = BLOCKED_RESPONSE.split(" ");
+                doublePos = {x: parseInt(doublePos[1]), y: parseInt(doublePos[2])};
+                let myClosestDelCell = findClosestDelCell(myPos, DEL_CELLS) 
+                let doubleClosestDelCell = findClosestDelCell(doublePos, DEL_CELLS);
+                if(manhattanDist(myPos, myClosestDelCell) > manhattanDist(doublePos, doubleClosestDelCell))
+                    await agent.putdown();
             }
             if (direction === 'up') {
                 for (let i = 0; i < 4; i++)
@@ -153,7 +158,7 @@ export async function delivery(myPos){                   //calcola il percorso p
 function blockedByDouble(doubleId)
 {
     agent.say(doubleId, "blocked: ", agent.pos.x, agent.pos.y);
-    if(BLOCKED_RESPONSE === true)
+    if(BLOCKED_RESPONSE != false)
     {
         return true;
     }
