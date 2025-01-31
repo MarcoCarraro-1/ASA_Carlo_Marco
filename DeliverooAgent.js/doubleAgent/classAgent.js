@@ -4,6 +4,7 @@ export class Agent {
         this.name = null;
         this.pos = null;
         this.carriedParcels = [];
+        this.id = null;
         this.doubleId = null;
         this.target = null;
         this.failedMovement = 0;

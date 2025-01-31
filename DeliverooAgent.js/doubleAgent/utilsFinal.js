@@ -422,22 +422,6 @@ export function isAdjacentOrSame(pos1, pos2) {
     }
 }
 
-export function assignNewOpposite(myPos, mapLength) {
-    let newOpposite;
-    do {
-        newOpposite = { x: getRandomCoordinate(mapLength), y: getRandomCoordinate(mapLength) };
-        // console.log("generating new opposite");
-
-        if(counter.countAttempts>50){
-            // console.log("Forcing path");
-            newOpposite.x = myPos.x;
-            newOpposite.y = 0;
-            counter.countAttempts=0;
-        }
-    } while (isAdjacentOrSame(myPos, newOpposite) || checkCondition(myPos,MAP,newOpposite));
-    return newOpposite;
-}
-
 export function getRandomCoordinate(max) {
     return Math.floor(Math.random() * max);
 }
@@ -576,6 +560,106 @@ export async function findTargetParcel(otherAgents, myPos, closestParcel, firstP
                     {
                         // console.log("Double should pick up");                                   // we communicate the parcel info to the double and we remove it from our the list of parcels
                         await agent.say(DOUBLE.id, ("pick that " + closestParcel.id + " " + closestParcel.x + " " + closestParcel.y)); //send to double position of his next target, we will search for another
+                        parcels = parcels.filter(parcel => parcel.id !== closestParcel.id); //remove that parcel from the list of parcels to pick up
+                        [closestParcel, BFStoParcel] = findClosestParcel(myPos, parcels);
+                    } 
+                    else 
+                    {
+                        console.log("Double should not pick up");
+                        targetParcel = closestParcel;
+                    }
+                    setResponse("i have a target");
+                }
+                else
+                {
+                    if(DOUBLE_AGENT && TARGET_RESPONSE.includes("target parcel")) // if the double agent has given to this agent a target, we go to pick it up
+                    {  
+                        console.log("2 inside find target double RESPONSE:", TARGET_RESPONSE);
+                        target_info = TARGET_RESPONSE.split(" ");
+                        try {
+                            targetParcel = parcels.filter(parcel => parcel.id === target_info[2])[0]; //we search for the target parcel in the list of parcels
+                            [closestParcel, BFStoParcel] = findClosestParcel(myPos, parcels);
+                            setResponse("no target");
+                        } catch {
+                            console.log("No target parcel found");
+                        }
+                    }
+                    else 
+                    {
+                        targetParcel = closestParcel;
+                    }
+                }
+            } 
+            else 
+            {
+                [closestParcel, BFStoParcel] = findClosestParcel(myPos, parcels);
+                targetParcel = closestParcel;
+                // console.log("targetParcel", targetParcel);
+            }
+            // targetParcel = closestParcel;
+        } 
+        else
+        {
+            //console.log("Opponent will steal ", closestParcel.id);
+            parcels = parcels.filter(parcel => parcel.id !== closestParcel.id); //remove that parcel from the list of parcels to pick up
+            [closestParcel, BFStoParcel] = findClosestParcel(myPos, parcels);
+            targetParcel = closestParcel;
+        }
+    }
+    // console.log("returning:", targetParcel, BFStoDel, BFStoParcel, firstPath, parcels);
+    return [targetParcel, BFStoDel, BFStoParcel, firstPath, parcels];
+}
+
+function findTargetParcel_pddl(otherAgents, myPos, closestParcel, firstPath, parcels)
+{
+    // console.log("inside definition of findTargetParcel");
+    let BFStoDel = [];
+    let BFStoParcel = [];
+    let targetParcel = null;
+    console.log("inside find target double RESPONSE:", TARGET_RESPONSE);
+    [closestDelCell, BFStoDel] = findClosestDelCell(myPos, DEL_CELLS); //we find the closest delivery cell to our current position
+    // if(closestDelCell)
+    // {
+    //     console.log("closestDelCell", closestDelCell);
+    //     console.log("BFStoDel", BFStoDel);
+    //     console.log("DELL_CELLS:", DEL_CELLS)
+    //     console.log("parcels:", parcels);
+    // }
+    while(parcels.length > 0 && targetParcel == null) //while there are parcels in our sight and we haven't found a target parcel, we search for one
+    { 
+        // console.log("inside while");
+        // if there is a dacading interval and if its worth to go pickup the parcel, the parcel can become our target
+        [closestParcel, BFStoParcel] = findClosestParcel(myPos, parcels);
+        if(PARCEL_DECADING_INTERVAL!=Infinity)
+        {
+            // console.log("inside PARCEL_DECADING_INTERVAL if");
+            //we check if it's worth it in term of points to pick up the parcel. If tradeOff is True, it's worth it
+            if(getCarriedPar() == 0 && !tradeOff(BFStoParcel.length, findClosestDelCell(closestParcel, DEL_CELLS), closestParcel, agent.carriedParcels.length))
+            {
+                // console.log("parcels before removing:", parcels);
+                parcels = parcels.filter(parcel => parcel.id !== closestParcel.id); //remove that parcel from the list of parcels to pick up
+                // console.log("Parcel not worth to pick up:", closestParcel);
+                // console.log("parcels after removing:", parcels);
+                parcels.sort((a,b) => b.reward - a.reward);
+                // console.log("parcels after sorting:", parcels);
+            }
+        }
+        if(iAmNearer((agent.pos.x, agent.pos.y),otherAgents, closestParcel, BFStoParcel))
+        {
+            // console.log("closest parcel:", closestParcel);
+            if(DOUBLE_AGENT) // if we are in the double agent scenario
+            { 
+                // console.log("Double agent");
+                var parcelsCopy = [...parcels]; 
+                agent.say(DOUBLE.id, ("do you have a target?")); //ask the double if he has a target
+                // console.log("asking double if he has a target");
+                if(I_GOT_TARGET_RESPONSE === false)  //If the double has a target, we won't assign him one
+                {      
+                    console.log("Double has no target");
+                    if(doubleShouldPickUp(parcelsCopy, myPos, DOUBLE.pos, closestParcel, otherAgents))  // if it's convenient for the double to pick up
+                    {
+                        // console.log("Double should pick up");                                   // we communicate the parcel info to the double and we remove it from our the list of parcels
+                        agent.say(DOUBLE.id, ("pick that " + closestParcel.id + " " + closestParcel.x + " " + closestParcel.y)); //send to double position of his next target, we will search for another
                         parcels = parcels.filter(parcel => parcel.id !== closestParcel.id); //remove that parcel from the list of parcels to pick up
                         [closestParcel, BFStoParcel] = findClosestParcel(myPos, parcels);
                     } 

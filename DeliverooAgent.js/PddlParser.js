@@ -43,8 +43,8 @@ function addParcelsToBeliefSet(beliefs, parcels) {
     }
 }
 
-function addMyselfToBeliefSet(beliefs, me) {
-    beliefs.addObject(`me_${me.id}`);
+function addMyselfToBeliefSet(beliefs, agent) {
+    beliefs.addObject(`me_${agent.id}`);
 }
 
 function addAgentsToBeliefSet(beliefs, agents) {
@@ -132,25 +132,26 @@ function specifyAgentsState(beliefsSet, agents) {
     }
 }
 
-function specifyMyState(beliefsSet, me) {
-    beliefsSet.declare(`at me_${me.id} tile_${me.x}-${me.y}`);
+function specifyMyState(beliefsSet, agent) 
+{
+    beliefsSet.declare(`at me_${agent.id} tile_${agent.pos.x}-${agent.pos.y}`);
 }
 
 
-function specifyGoal(destinationTile, me, sit) {
+function specifyGoal(destinationTile, agent, sit) {
     let goal = '';
     switch(sit){
         case "putdown":
             goal = `and (at parcel_${destinationTile.id} tile_${destinationTile.x}-${destinationTile.y}) (not (carriedBy parcel_${destinationTile.id} me_${me.id}))`;
             break;
         case "opp":
-            goal = `at me_${me.id} tile_${destinationTile.x}-${destinationTile.y}`;
+            goal = `at me_${agent.id} tile_${destinationTile.x}-${destinationTile.y}`;
             break;
         case "del":
-            goal = `at me_${me.id} tile_${destinationTile.x}-${destinationTile.y}`;
+            goal = `at me_${agent.id} tile_${destinationTile.x}-${destinationTile.y}`;
             break;
         case "toparcel":
-            goal = `carriedBy parcel_${destinationTile.id} me_${me.id}`;
+            goal = `carriedBy parcel_${destinationTile.id} me_${agent.id}`;
             break;
     }
     console.log("This goal:", goal);
