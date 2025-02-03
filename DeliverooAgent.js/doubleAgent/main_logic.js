@@ -3,19 +3,18 @@ import { DeliverooApi, timer } from "@unitn-asa/deliveroo-js-client";
 import {createMap, getCarriedPar, emptyCarriedPar, moveTo, shortestPathBFS, iAmOnDelCell,
         iAmOnParcel, getMinCarriedValue, isAdjacentOrSame, assignNewOpposite, executePddlAction,
         checkPos, assignOpposite, checkCondition, counter, getRandomCoordinate, findTargetParcel, 
-        findTargetParcel_pddl, bondToDouble} from "./utilsFinal.js";
+        findTargetParcel_pddl, bondToDouble} from "./utils.js";
 import { generatePlanWithPddl } from "../PddlParser.js";
 import { messageHandler } from "./parcel_choosing.js";
 import {DEL_CELLS, MAP, ARRIVED_TO_TARGET, DELIVERED, RESPONSE, DOUBLE_AGENT, DOUBLE,
         rotateDeliveryCells, setMessageReceived, setMap, setArrivedToTarget, setDelivered, setParcelDecadingInterval, 
         setDoubleAgent, setResponse} from"./globals.js";
-import {Agent} from './classAgent.js';
+import {Agent} from './class_agent.js';
 
 var closestParcel;      //cella con pacchetto libero più vicina
 var targetParcel = null;       //cella con pacchetto obiettivo
 var firstPath = null;    //path da seguire nel caso in cui non ci sia soluzione ottimale
 var closestDelCell;
-let agentsCallback;
 let otherAgents = [];
 let parcelsCallback;
 var parcels;
@@ -52,9 +51,6 @@ client.onConfig((configInfo) => {
 
 client.onAgentsSensing((agents) => {
     otherAgents = agents;
-    if (agentsCallback) {
-        agentsCallback(agents);
-    }
 })
 
 client.onMap((width, height, tiles) => {

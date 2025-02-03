@@ -1,6 +1,6 @@
-import { shortestPathBFS, findClosestParcel, isAdjacentOrSame } from "./utilsFinal.js"
+import { shortestPathBFS, findClosestParcel, isAdjacentOrSame } from "./utils.js"
 import { MAP, PARCEL_DECADING_INTERVAL, BOND_MESSAGE, DOUBLE, setDoubleId} from "./globals.js"
-import {agent} from "./doubleAgentFinal.js"
+import {agent} from "./main_logic.js"
 import {timer} from "@unitn-asa/deliveroo-js-client";
 
 //we check if it's worth in term of points to pick one parcel

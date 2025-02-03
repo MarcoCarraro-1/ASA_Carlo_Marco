@@ -1,6 +1,6 @@
 let delDists = [];      //distanza da celle deliverabili
 let closestDelCell;     //cella deliverabile più vicina
-import {agent, client} from "./doubleAgentFinal.js";
+import {agent, client} from "./main_logic.js";
 import {iAmNearer, tradeOff, doubleShouldPickUp} from "./parcel_choosing.js";
 import {DEL_CELLS, MAP, PDDL, BOND_MESSAGE, setArrivedToTarget, PARCEL_DECADING_INTERVAL, DOUBLE_AGENT, 
     TARGET_RESPONSE, DOUBLE, setResponse,
