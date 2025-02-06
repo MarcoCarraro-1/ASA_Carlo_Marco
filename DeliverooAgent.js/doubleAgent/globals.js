@@ -1,17 +1,14 @@
 export let DEL_CELLS = []; //cells where we can deliver
 export let ARRIVED_TO_TARGET = false;
 export let MAP = [];
-export let DELIVERED = true;
 export let PDDL = false;
 export let PARCEL_DECADING_INTERVAL;
-export let BOND_MESSAGE = "I'm the Alfa agent, Beta tell me your id";
-export let MESSAGE_RECEIVED = false;
 export let DOUBLE_AGENT = false;
-export let ATTEMPT_COUNTER = { countAttempts: 0};
+export let ATTEMPT_COUNTER = { countAttempts: 0}; //counter for the number of attempts to do a single movement
+export let BOND_MESSAGE = "I'm the Alfa agent, Beta tell me your id";
 export let I_GOT_TARGET_RESPONSE = false;
 export let TARGET_RESPONSE = "no target";
 export let BLOCKED_RESPONSE = false;
-export let RESPONSE = false;
 export let DOUBLE = {id: null, pos: null, parcels: null};
 
 export function setMap(map){
@@ -26,10 +23,6 @@ export function rotateDeliveryCells()
 }
 export function setArrivedToTarget(value) {
     ARRIVED_TO_TARGET = value;
-}
-
-export function setDelivered(value) {
-    DELIVERED = value;
 }
 
 export function setBetaName(name){
@@ -62,10 +55,6 @@ export function setParcelDecadingInterval(value){
     }
 }
 
-export function setMessageReceived(value){
-    MESSAGE_RECEIVED = value;
-}
-
 export function setDoubleId(value){
     DOUBLE.id = value;
 }
@@ -82,7 +71,7 @@ export function setDoubleAgent(value){
 }
 
 export function setResponse(value){
-    console.log("Response in setResponse: ", value);
+    // console.log("Response in setResponse: ", value);
     if(value !== undefined && value.includes("target parcel"))
     {
         TARGET_RESPONSE = value;
@@ -101,8 +90,8 @@ export function setResponse(value){
             case "i don't have a target":
                 I_GOT_TARGET_RESPONSE = false;
                 break;
-            case "no target":
-                TARGET_RESPONSE = "no target";
+            case "no target assigned":
+                TARGET_RESPONSE = "no target assigned";
                 break;
             case "sblocked":
                 BLOCKED_RESPONSE = false;

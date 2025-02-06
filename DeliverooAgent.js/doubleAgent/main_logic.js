@@ -1,24 +1,21 @@
 import { default as config } from "./config.js";
 import { DeliverooApi, timer } from "@unitn-asa/deliveroo-js-client";
 import {createMap, getCarriedPar, emptyCarriedPar, moveTo, shortestPathBFS, iAmOnDelCell,
-        iAmOnParcel, getMinCarriedValue, isAdjacentOrSame, assignNewOpposite, executePddlAction,
-        checkPos, assignOpposite, checkCondition, counter, getRandomCoordinate, findTargetParcel, 
+        iAmOnParcel, executePddlAction, checkPos, findTargetParcel, 
         findTargetParcel_pddl, bondToDouble} from "./utils.js";
 import { generatePlanWithPddl } from "../PddlParser.js";
 import { messageHandler } from "./parcel_choosing.js";
-import {DEL_CELLS, MAP, ARRIVED_TO_TARGET, DELIVERED, RESPONSE, DOUBLE_AGENT, DOUBLE,
-        rotateDeliveryCells, setMessageReceived, setMap, setArrivedToTarget, setDelivered, setParcelDecadingInterval, 
-        setDoubleAgent, setResponse} from"./globals.js";
+import {DEL_CELLS, MAP, ARRIVED_TO_TARGET, DOUBLE_AGENT,rotateDeliveryCells, setMap, 
+        setArrivedToTarget, setParcelDecadingInterval, setDoubleAgent, setResponse} from"./globals.js";
 import {Agent} from './class_agent.js';
 
 var closestParcel;      //cella con pacchetto libero più vicina
-var targetParcel = null;       //cella con pacchetto obiettivo
+var targetParcel = null;      //cella con pacchetto obiettivo
 var firstPath = null;    //path da seguire nel caso in cui non ci sia soluzione ottimale
 var closestDelCell;
 let otherAgents = [];
-let parcelsCallback;
-var parcels;
-var BFStoTargetParcel;
+var parcels;            //vettore di parcelle viste
+var BFStoTargetParcel;  //path da seguire per raggiungere la cella con il pacchetto obiettivo
 let pddlPlan=undefined;
 let token;
 
@@ -67,17 +64,13 @@ client.onMap((width, height, tiles) => {
 
 client.onParcelsSensing((p)=> {
     parcels = p.filter(parcel => parcel.carriedBy === null);
-    if (parcelsCallback) {
-        parcelsCallback(p);
-        }
     })
 
 client.onMsg( (senderId, senderName, msg) => {
     console.log("new msg received from", senderId, senderName + ':', msg);
-    setMessageReceived(true);
-    let response = messageHandler(senderId, msg)
+    let response = messageHandler(senderId, msg);
     setResponse(response);
-});
+})
 
 
 // if we are in the double agent mode we bond to the other agent
@@ -100,24 +93,22 @@ async function agentLoop(){
     while(true)
     {
         // console.log("top of the cycle");
-        await agent.pickup(); //spamming pickup
+        agent.pickup(); //spamming pickup
         
         if(iAmOnDelCell(agent.pos)) // we putdown every time we are on a delivery cell
         {  
             // console.log("have to put");
             await agent.putdown();
             await emptyCarriedPar(); 
-            // setDelivered(true);
             // console.log("done it");
         }
 
         // we constantly search for a parcel to pickup between the ones we see if we don't have a target
+        agent.assignTarget(targetParcel);
         if(targetParcel==null)
         {
-            agent.assignTarget(targetParcel);
             // console.log("target is null");
             [targetParcel, BFStoDel, BFStoTargetParcel, firstPath, parcels] = await findTargetParcel(otherAgents, agent.pos, closestParcel, firstPath, parcels);
-            agent.assignTarget(targetParcel);
             // console.log("first findTargetParcel()");
             // console.log("returned targetParcel: ", targetParcel); 
             // console.log("returned BFStoDel: ", BFStoDel)
@@ -125,10 +116,7 @@ async function agentLoop(){
             // console.log("returned firstPath: ", firstPath)
             // console.log("returned parcels: ", parcels, parcels.length);
         }
-        else
-        {
-            agent.assignTarget(targetParcel);
-        }
+        agent.assignTarget(targetParcel);
 
         // if we have to reach the cell of the target parcel 
         while(!ARRIVED_TO_TARGET){
@@ -142,7 +130,6 @@ async function agentLoop(){
                 // console.log("have to put");
                 await agent.putdown();
                 await emptyCarriedPar(); 
-                // setDelivered(true);
                 // console.log("done it");
             }
 
@@ -150,9 +137,9 @@ async function agentLoop(){
             // console.log("look for target 2");
             // console.log("initial target:", targetParcel);
             // if we don't have a target, we look for one between the parcels we see
-            if(targetParcel==null){
+            if(targetParcel==null)
+            {
                 agent.assignTarget(targetParcel);
-
                 // console.log("no target parcel");
                 [targetParcel, BFStoDel, BFStoTargetParcel, firstPath, parcels] = await findTargetParcel(otherAgents, agent.pos, closestParcel, firstPath, parcels);
                 // console.log("second findTargetParcel()");
@@ -161,6 +148,7 @@ async function agentLoop(){
                 // console.log("\n BFStoTargetParcel: ", BFStoTargetParcel);
                 // console.log("\n firstPath: ", firstPath);
                 // console.log( "\n parcels: ", parcels);
+                agent.pickup(); //spamming pickup
                 agent.assignTarget(targetParcel);
             }
 
@@ -175,9 +163,9 @@ async function agentLoop(){
                 {
                     // if(targetParcel == null) console.log("target parcel is null");
                     // console.log("Carried Parcels inside delivering: ", getCarriedPar());
-                    agent.pos = checkPos(agent.pos.x, agent.pos.y);
+                    agent.pos = checkPos(agent.pos.x, agent.pos.y); // checkPos round the non integer values of pos coordinates
+                    agent.pickup(); //spamming pickup
                     await moveTo(agent.pos, BFStoDel);
-                    await agent.pickup(); //spamming pickup
                 }
                 // target is null and we have nothing to deliver:
                 // we start exploring the map going in the direction of the delivery cells
@@ -190,7 +178,6 @@ async function agentLoop(){
                         // console.log("have to put");
                         await agent.putdown();
                         await emptyCarriedPar(); 
-                        // setDelivered(true);
                         // console.log("done it");
                     }
                     // console.log("Carried Parcels inside exploring: ", agent.carriedParcels);
@@ -213,17 +200,8 @@ async function agentLoop(){
             // if we have a target parcel
             else
             {
-                agent.pos = checkPos(agent.pos.x, agent.pos.y);
                 agent.assignTarget(targetParcel);
                 // console.log("yes target");
-                if(iAmOnDelCell(agent.pos)){ // another putdown inside here just to be sure
-                    // console.log("have to put");
-                    await agent.putdown();
-                    await emptyCarriedPar(); 
-                    // setDelivered(true);
-                    // console.log("done it");
-                }
-                await agent.pickup(); //spamming pickup
                 agent.pos = checkPos(agent.pos.x, agent.pos.y);  // checkPos round the non integer values of pos coordinates
                 try{
                     await moveTo(agent.pos, BFStoTargetParcel);
@@ -231,14 +209,13 @@ async function agentLoop(){
                 }catch{
                     console.log("error in moving");
                 }
-                // If we are carrying something and the distance to the delivery cell is less than the distance to the target parcel we go to deliver
             }
             // console.log("checking arrived:",ARRIVED_TO_TARGET);
         }
 
         if(iAmOnParcel(agent.pos, parcels))
         {
-            await agent.pickup(); // if we are on parcel tile we pickup
+            await agent.pickup(); // if we are on parcel we pickup
             // console.log("here5");
         }
         setArrivedToTarget(false);
@@ -263,13 +240,12 @@ async function agentLoop_pddl(){
             // console.log("have to put");
             await agent.putdown();
             await emptyCarriedPar(); 
-            // setDelivered(true);
             // console.log("done it");
         }
         if(targetParcel==null)
         {
             agent.assignTarget(targetParcel);
-            [targetParcel, BFStoDel, BFStoTargetParcel, firstPath, parcels] = await findTargetParcel_pddl(otherAgents, agent.pos, closestParcel, firstPath, parcels);
+            [targetParcel, BFStoDel, BFStoTargetParcel, firstPath, parcels] = findTargetParcel_pddl(otherAgents, agent.pos, closestParcel, firstPath, parcels);
             agent.assignTarget(targetParcel);
         }
         else
@@ -282,7 +258,6 @@ async function agentLoop_pddl(){
                 await timer(20);
             }
             if(iAmOnDelCell(agent.pos)){
-                // setDelivered(true);
                 await agent.putdown();
                 await emptyCarriedPar();
             }
@@ -290,7 +265,7 @@ async function agentLoop_pddl(){
             if(targetParcel==null)
             {
                 agent.assignTarget(targetParcel);
-                [targetParcel, BFStoDel, BFStoTargetParcel, firstPath, parcels] = await findTargetParcel_pddl(otherAgents, agent.pos, closestParcel, firstPath, parcels);
+                [targetParcel, BFStoDel, BFStoTargetParcel, firstPath, parcels] = findTargetParcel_pddl(otherAgents, agent.pos, closestParcel, firstPath, parcels);
                 agent.assignTarget(targetParcel);
             }
 
@@ -299,7 +274,7 @@ async function agentLoop_pddl(){
                 agent.assignTarget(targetParcel);
                 if((getCarriedPar() != 0 && getCarriedPar() != undefined))
                 {
-                    agent.pos = checkPos(agent.pos.x, agent.pos.y);
+                    agent.pos = checkPos(agent.pos.x, agent.pos.y); // checkPos round the non integer values of pos coordinates
                     
                     pddlPlan=undefined;
                     while(pddlPlan==undefined){
@@ -318,7 +293,6 @@ async function agentLoop_pddl(){
                 else
                 {
                     if(iAmOnDelCell(agent.pos)){
-                        // setDelivered(true);
                         await agent.putdown();
                         await emptyCarriedPar();
                         // await new Promise(resolve => setTimeout(resolve, 50));
@@ -330,7 +304,7 @@ async function agentLoop_pddl(){
                         rotateDeliveryCells();
                     else
                     {
-                        agent.pos = checkPos(agent.pos.x, agent.pos.y);
+                        agent.pos = checkPos(agent.pos.x, agent.pos.y); // checkPos round the non integer values of pos coordinates
                         pddlPlan=undefined;
                         while(pddlPlan==undefined)
                         {
@@ -352,14 +326,13 @@ async function agentLoop_pddl(){
             }
             else
             {
-                agent.pos = checkPos(agent.pos.x, agent.pos.y);
+                agent.pos = checkPos(agent.pos.x, agent.pos.y); // checkPos round the non integer values of pos coordinates
                 agent.assignTarget(targetParcel);
                 if(iAmOnDelCell(agent.pos))
                 { // another putdown inside here just to be sure
                     // console.log("have to put");
                     await agent.putdown();
                     await emptyCarriedPar(); 
-                    // setDelivered(true);
                     // console.log("done it");
                 }
                 try{
@@ -387,19 +360,16 @@ async function agentLoop_pddl(){
             }
 
             if(iAmOnParcel(agent.pos, parcels)){
-                // setDelivered(false);
                 await agent.pickup();
             }else 
             if(iAmOnDelCell(agent.pos)){
-                // setDelivered(true);
                 await agent.putdown();
                 await emptyCarriedPar();
-                // await new Promise(resolve => setTimeout(resolve, 50));
             }
             setArrivedToTarget(false);
             targetParcel=null;
             agent.assignTarget(targetParcel);
-            await agent.pickup();
+            agent.pickup();
         }
         
         if (!pddlPlan || pddlPlan.length === 0) {
@@ -411,7 +381,6 @@ async function agentLoop_pddl(){
 }
 
 function startGame() {
-    counter.countAttempts=0;
     if (process.argv[2] === 'pddl') {
         agentLoop_pddl();
     } else {

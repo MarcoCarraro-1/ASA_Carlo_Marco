@@ -4,14 +4,20 @@ import {agent} from "./main_logic.js"
 import {timer} from "@unitn-asa/deliveroo-js-client";
 
 //we check if it's worth in term of points to pick one parcel
-export function tradeOff (distanceToParcel, parcelDistanceToDel, nearestDelDistToMe, parcel, carriedParLength)
+export function tradeOff (distanceToParcel, parcelDistanceToDel, nearestDelCellDistToMe, parcel, carriedParLength)
 {
+    try{
+        carriedParLength = carriedParLength.length;
+    }
+    catch{
+        carriedParLength = 0;
+    }
     // console.log("inside tradeOff");
     let valueWhenPicked =  parcel.reward - (distanceToParcel * PARCEL_DECADING_INTERVAL); //the value of the parcel when picked up
                                                                                     //assuming every step take 1 unit of value
-    console.log("value of", parcel, " when picked: ", valueWhenPicked);
+    // console.log("value of", parcel, " when picked: ", valueWhenPicked);
     if(valueWhenPicked <= 0){
-        console.log("value when picked <0");
+        // console.log("value when picked <0");
         return false;
     }
     
@@ -24,7 +30,7 @@ export function tradeOff (distanceToParcel, parcelDistanceToDel, nearestDelDistT
     let carriedParLoss = (carriedParLength * (distanceToParcel + parcelDistanceToDel)) - valueWhenDelivered; //the value loss for the 
                                                                                                 //carried parcels if we go pickup 
                                                                                                 //and deliver this parcel
-    if(carriedParLoss < carriedParLength * nearestDelDistToMe)
+    if(carriedParLoss < carriedParLength * nearestDelCellDistToMe)
         return true; //if the loss to deliver the new parcel is counterbalanced by its value we go to pick up and deliver it
 }
 
@@ -32,11 +38,14 @@ export function iAmNearer(myPos, otherAgents, position, BFStoPosition) {//check 
     let minDistance;
     try{
         minDistance = BFStoPosition.length; //the distance between me and 'position'
-        otherAgents.forEach(agent => {
-            if(shortestPathBFS(myPos.x, myPos.y, position.x, position.y, MAP).length < minDistance){
-                return false; //there is someone nearer than me
+        for (let agent of otherAgents) 
+        {
+            let agentDistance = shortestPathBFS(agent.x, agent.y, position.x, position.y, MAP).length;
+            if (agentDistance < minDistance) 
+            {
+                return false; // There is someone nearer than me
             }
-        })
+        }
     }catch{
         // console.log("No comparison with other agents");
     }
@@ -47,7 +56,8 @@ export function iAmNearer(myPos, otherAgents, position, BFStoPosition) {//check 
 export function doubleShouldPickUp(parcels, myPos, doublePos, myTargetParcel, otherAgents)
 {   
     // if we have only one parcel, there are no other candidate target parcels to pick up
-    if(parcels.length <= 1){
+    if(parcels.length <= 1)
+    {
         return false;
     }
     let closestParcel;
@@ -55,14 +65,17 @@ export function doubleShouldPickUp(parcels, myPos, doublePos, myTargetParcel, ot
     // remove the target parcel from the list of parcels so we can search for another candidate target
     parcels = parcels.filter(parcel => parcel.id !== myTargetParcel.id);
     [closestParcel, BFStoParcel] = findClosestParcel(myPos, parcels, MAP);
-    if(closestParcel === null){
+    if(closestParcel === null)
+    {
         return false;
     }
-    if(iAmNearer(otherAgents, closestParcel, BFStoParcel)){ // if I am the nearest to the other parcel i found
+    if(iAmNearer(otherAgents, closestParcel, BFStoParcel))  // if I am the nearest to the other parcel i found
+    {
         let otherAgentsCopy = [...otherAgents];
         otherAgentsCopy = otherAgentsCopy.filter(oneAgent => oneAgent.id !== agent.id); // i remove myself from the list of enemies
-        if(iAmNearer(doublePos, otherAgentsCopy, myTargetParcel, BFStoParcel)){ // if the double is the nearest (except me) to my original 
-            return true;                                                       // target parcel he can go pick it up
+        if(iAmNearer(doublePos, otherAgentsCopy, myTargetParcel, BFStoParcel)) // if the double is the nearest (except me) to my original 
+        {                                                                      // target parcel he can go pick it up
+            return true;                                                       
         }
     }
 }
