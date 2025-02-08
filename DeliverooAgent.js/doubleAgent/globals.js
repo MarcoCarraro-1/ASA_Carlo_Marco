@@ -72,11 +72,21 @@ export function setDoubleAgent(value){
 
 export function setResponse(value){
     // console.log("Response in setResponse: ", value);
-    if(value !== undefined && value.includes("target parcel"))
+    if(typeof value != 'boolean'){
+        try{
+            tmp = value.inclueds("")
+        }
+        catch{
+            if(value != undefined)
+                value = value.toString();
+        }
+    }
+
+    if(typeof value != 'boolean' && value !== undefined && value.includes("target parcel"))
     {
         TARGET_RESPONSE = value;
     }
-    else if(value !== undefined && value.includes("blocked"))
+    else if(typeof value != 'boolean' && value !== undefined && value.includes("blocked"))
     {
         BLOCKED_RESPONSE = value;
     }

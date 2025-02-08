@@ -116,7 +116,7 @@ export function delDistances(myPos, delCell){     //valuta la distanza tra posiz
 export async function delivery(myPos){                   //calcola il percorso per arrivare alla delivery cell più vicina e muove l'agente
     closestDelCell = delDistances(myPos, DEL_CELLS);
     let shortestPath = shortestPathBFS(myPos.x, myPos.y, closestDelCell.x, closestDelCell.y);
-    let direction = nextMove(myPos,shortestPath);
+    let direction = await nextMove(myPos,shortestPath);
     
     if(direction === 'same')
     {
@@ -575,7 +575,6 @@ export async function findTargetParcel(otherAgents, myPos, closestParcel, firstP
                         targetParcel = parcels.filter(parcel => parcel.id === target_info[2])[0]; //we search for the target parcel in the list of parcels
                         [closestParcel, BFStoParcel] = findClosestParcel(myPos, [targetParcel]);
                         setResponse("no target assigned");
-                        setResponse("i have a target"); // we communicate to the double that we have a target
                         return [targetParcel, BFStoDel, BFStoParcel, firstPath, parcels]; // redundant, but for clarity
                     } catch {
                         //console.log("No target parcel found");
@@ -699,7 +698,6 @@ export function findTargetParcel_pddl(otherAgents, myPos, closestParcel, firstPa
                         targetParcel = parcels.filter(parcel => parcel.id === target_info[2])[0]; //we search for the target parcel in the list of parcels
                         [closestParcel, BFStoParcel] = findClosestParcel(myPos, [targetParcel]);
                         setResponse("no target assigned");
-                        setResponse("i have a target"); // we communicate to the double that we have a target
                         return [targetParcel, BFStoDel, BFStoParcel, firstPath, parcels]; // redundant, but for clarity
                     } catch {
                         //console.log("No target parcel found");

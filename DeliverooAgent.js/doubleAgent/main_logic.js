@@ -136,8 +136,8 @@ async function agentLoop(){
             // console.log("MAP_:", MAP);
             // console.log("look for target 2");
             // console.log("initial target:", targetParcel);
-            // if we don't have a target, we look for one between the parcels we see
-            if(targetParcel==null)
+            // if we don't have a target or we are carrying a lot of parcels, we look for one between the parcels we see
+            if(getCarriedPar() < 4 || targetParcel==null)
             {
                 agent.assignTarget(targetParcel);
                 // console.log("no target parcel");
@@ -152,8 +152,8 @@ async function agentLoop(){
                 agent.assignTarget(targetParcel);
             }
 
-            // if we still don't have a target (no parcel is seen or is pickable) we see if we explore or we deliver
-            if(targetParcel==null)
+            // if we still don't have a target (no parcel is seen or is pickable) or we are carrying a lot of parcels we see if we explore or we deliver
+            if(getCarriedPar() > 4 || targetParcel==null)
             {
                 agent.assignTarget(targetParcel);
                 // console.log("no target parcel");
