@@ -22,26 +22,27 @@ export class Agent {
     
     assignCarriedParcels()
     {
-        this.client.onCarryParcel((info) => {
-        this.carriedParcels.push(info);
+        this.client.onParcelsSensing((p)=> {
+            this.carriedParcels = p.filter(parcel => parcel.carriedBy == this.id);
+            })
         // console.log("Assigned carried parcels");
-        });
     }
 
     assignTarget(target)
     {
         this.target = target;
+        // console.log("Assigned target: ", this.target);
     }
 
     async move ( direction ) 
     {
         if(await this.client.move(direction) == false)
         {
-            console.log("Failed to move");
+            // console.log("Failed to move");
             this.failedMovement++;
             if(this.failedMovement >= 3) 
             {
-                console.log("Failed to move 3 times in a row"); // if the agent fails to move 3 times in a row it will try to move in another direction
+                // console.log("Failed to move 3 times in a row"); // if the agent fails to move 3 times in a row it will try to move in another direction
                 if(direction == "up")
                 {
                     await this.client.move("right");

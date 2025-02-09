@@ -34,8 +34,11 @@ export function tradeOff (distanceToParcel, parcelDistanceToDel, nearestDelCellD
         return true; //if the loss to deliver the new parcel is counterbalanced by its value we go to pick up and deliver it
 }
 
-export function iAmNearer(myPos, otherAgents, position, BFStoPosition) {//check if I am nearer to 'position' than other agents
+export function iAmNearer(otherAgents, position, BFStoPosition) {//check if I am nearer to 'position' than other agents
+    if(position == null)
+        return false;
     let minDistance;
+    // console.log("position", position);
     try{
         minDistance = BFStoPosition.length; //the distance between me and 'position'
         for (let agent of otherAgents) 

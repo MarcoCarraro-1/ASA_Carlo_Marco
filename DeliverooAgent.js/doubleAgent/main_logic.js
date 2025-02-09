@@ -40,6 +40,7 @@ export const agent = new Agent(client)
 
 //get name, id and position of the agent
 agent.assignOnYouInfo();
+agent.assignCarriedParcels();
 
 client.onConfig((configInfo) => {
     // console.log("config", configInfo);
@@ -67,7 +68,7 @@ client.onParcelsSensing((p)=> {
     })
 
 client.onMsg( (senderId, senderName, msg) => {
-    console.log("new msg received from", senderId, senderName + ':', msg);
+    // console.log("new msg received from", senderId, senderName + ':', msg);
     let response = messageHandler(senderId, msg);
     setResponse(response);
 })
@@ -107,10 +108,10 @@ async function agentLoop(){
         agent.assignTarget(targetParcel);
         if(targetParcel==null)
         {
-            // console.log("target is null");
+            // console.log("starting target is null");
             [targetParcel, BFStoDel, BFStoTargetParcel, firstPath, parcels] = await findTargetParcel(otherAgents, agent.pos, closestParcel, firstPath, parcels);
             // console.log("first findTargetParcel()");
-            // console.log("returned targetParcel: ", targetParcel); 
+            // console.log("first returned targetParcel: ", targetParcel); 
             // console.log("returned BFStoDel: ", BFStoDel)
             // console.log("returned BFStoTargetParcel: ", BFStoTargetParcel) 
             // console.log("returned firstPath: ", firstPath)
@@ -119,9 +120,9 @@ async function agentLoop(){
         agent.assignTarget(targetParcel);
 
         // if we have to reach the cell of the target parcel 
-        while(!ARRIVED_TO_TARGET){
-
-            // console.log("inside !ARRIVED_TO_TARGET-while");
+        while(!ARRIVED_TO_TARGET)
+        {
+            // console.log("inside !ARRIVED_TO_TARGET-while: ", ARRIVED_TO_TARGET);
             while(parcels==undefined){ // wait for the vector of the seen parcels to be ready
                 // console.log("inside parcels==undefined-while");
                 await timer(20);
@@ -136,14 +137,14 @@ async function agentLoop(){
             // console.log("MAP_:", MAP);
             // console.log("look for target 2");
             // console.log("initial target:", targetParcel);
-            // if we don't have a target or we are carrying a lot of parcels, we look for one between the parcels we see
-            if(getCarriedPar() < 4 || targetParcel==null)
+            // if we don't have a target and we are not carrying a lot of parcels, we look for one between the parcels we see
+            if(getCarriedPar() < 5 && targetParcel==null)
             {
                 agent.assignTarget(targetParcel);
                 // console.log("no target parcel");
                 [targetParcel, BFStoDel, BFStoTargetParcel, firstPath, parcels] = await findTargetParcel(otherAgents, agent.pos, closestParcel, firstPath, parcels);
                 // console.log("second findTargetParcel()");
-                // console.log("targetParcel: ", targetParcel); 
+                // console.log("targetParcel of second findTargetParcel: ", targetParcel); 
                 // console.log("\n BFStoDel: ", BFStoDel);
                 // console.log("\n BFStoTargetParcel: ", BFStoTargetParcel);
                 // console.log("\n firstPath: ", firstPath);
@@ -151,21 +152,31 @@ async function agentLoop(){
                 agent.pickup(); //spamming pickup
                 agent.assignTarget(targetParcel);
             }
-
+            // console.log("outside second findTargetParcel()");
             // if we still don't have a target (no parcel is seen or is pickable) or we are carrying a lot of parcels we see if we explore or we deliver
-            if(getCarriedPar() > 4 || targetParcel==null)
+            if(getCarriedPar() > 5 || targetParcel==null)
             {
+                targetParcel = null
+                // console.log("inside getCarriedPar() > 4 || targetParcel==null");
                 agent.assignTarget(targetParcel);
                 // console.log("no target parcel");
 
                 // If we are carrying something and there are no targets we go deliver
                 if((getCarriedPar() != 0 && getCarriedPar() != undefined))
                 {
-                    // if(targetParcel == null) console.log("target parcel is null");
-                    // console.log("Carried Parcels inside delivering: ", getCarriedPar());
+                    // console.log("going to deliver");
+                    if(DOUBLE_AGENT)
+                        setResponse("I have a target"); // we are busy with the delivery, so we can't take targets from the other agent
                     agent.pos = checkPos(agent.pos.x, agent.pos.y); // checkPos round the non integer values of pos coordinates
                     agent.pickup(); //spamming pickup
                     await moveTo(agent.pos, BFStoDel);
+                    if(iAmOnDelCell(agent.pos)) // we putdown every time we are on a delivery cell
+                    {  
+                        // console.log("have to put");
+                        await agent.putdown();
+                        await emptyCarriedPar(); 
+                        // console.log("done it");
+                    }
                 }
                 // target is null and we have nothing to deliver:
                 // we start exploring the map going in the direction of the delivery cells
@@ -202,12 +213,13 @@ async function agentLoop(){
             {
                 agent.assignTarget(targetParcel);
                 // console.log("yes target");
+                // console.log("\n BFStoTargetParcel: ", BFStoTargetParcel);
                 agent.pos = checkPos(agent.pos.x, agent.pos.y);  // checkPos round the non integer values of pos coordinates
                 try{
                     await moveTo(agent.pos, BFStoTargetParcel);
                     // console.log("moved");
                 }catch{
-                    console.log("error in moving");
+                    // console.log("error in moving");
                 }
             }
             // console.log("checking arrived:",ARRIVED_TO_TARGET);
@@ -217,6 +229,13 @@ async function agentLoop(){
         {
             await agent.pickup(); // if we are on parcel we pickup
             // console.log("here5");
+        }
+        if(iAmOnDelCell(agent.pos)) // we putdown every time we are on a delivery cell
+        {  
+            // console.log("have to put");
+            await agent.putdown();
+            await emptyCarriedPar(); 
+            // console.log("done it");
         }
         setArrivedToTarget(false);
         targetParcel=null;
@@ -231,10 +250,11 @@ async function agentLoop_pddl(){
     while(parcels==undefined || MAP==undefined){
         await timer(20);
     }
-    let BFStoDel = [];
+
     while(true){
         // console.log("Using PDDL logic");
         // console.log("top of the cycle");
+        agent.pickup(); //spamming pickup
         if(iAmOnDelCell(agent.pos)) // we putdown every time we are on a delivery cell
         {  
             // console.log("have to put");
@@ -242,16 +262,18 @@ async function agentLoop_pddl(){
             await emptyCarriedPar(); 
             // console.log("done it");
         }
+        agent.assignTarget(targetParcel);
         if(targetParcel==null)
         {
-            agent.assignTarget(targetParcel);
             [targetParcel, BFStoDel, BFStoTargetParcel, firstPath, parcels] = findTargetParcel_pddl(otherAgents, agent.pos, closestParcel, firstPath, parcels);
-            agent.assignTarget(targetParcel);
+            // console.log("first findTargetParcel()");
+            // console.log("first returned targetParcel: ", targetParcel); 
+            // console.log("returned BFStoDel: ", BFStoDel)
+            // console.log("returned BFStoTargetParcel: ", BFStoTargetParcel) 
+            // console.log("returned firstPath: ", firstPath)
+            // console.log("returned parcels: ", parcels, parcels.length);
         }
-        else
-        {
-            agent.assignTarget(targetParcel);
-        }
+        agent.assignTarget(targetParcel);
 
         while(!ARRIVED_TO_TARGET){
             while(parcels==undefined){
@@ -262,16 +284,19 @@ async function agentLoop_pddl(){
                 await emptyCarriedPar();
             }
 
-            if(targetParcel==null)
+            if(getCarriedPar() < 5 && targetParcel==null)
             {
                 agent.assignTarget(targetParcel);
                 [targetParcel, BFStoDel, BFStoTargetParcel, firstPath, parcels] = findTargetParcel_pddl(otherAgents, agent.pos, closestParcel, firstPath, parcels);
                 agent.assignTarget(targetParcel);
+                agent.pickup(); //spamming pickup
             }
 
-            if(targetParcel==null)
+            if(getCarriedPar() > 5 || targetParcel==null)
             {
+                targetParcel = null
                 agent.assignTarget(targetParcel);
+                // If we are carrying something and there are no targets we go deliver
                 if((getCarriedPar() != 0 && getCarriedPar() != undefined))
                 {
                     agent.pos = checkPos(agent.pos.x, agent.pos.y); // checkPos round the non integer values of pos coordinates
@@ -288,8 +313,10 @@ async function agentLoop_pddl(){
                             break;
                         }
                     }
-
                 }
+                // target is null and we have nothing to deliver:
+                // we start exploring the map going in the direction of the delivery cells
+                // searching for parcels
                 else
                 {
                     if(iAmOnDelCell(agent.pos)){
@@ -297,9 +324,7 @@ async function agentLoop_pddl(){
                         await emptyCarriedPar();
                         // await new Promise(resolve => setTimeout(resolve, 50));
                     }
-                    let BFS_toExplore = shortestPathBFS(agent.pos.x, agent.pos.y, DEL_CELLS[0].x, DEL_CELLS[0].y);
                     let dist = Math.abs(agent.pos.x - DEL_CELLS[0].x) + Math.abs(agent.pos.y - DEL_CELLS[0].y);
-                    BFS_toExplore.splice(-3,3)
                     if(dist <= 3)
                         rotateDeliveryCells();
                     else
@@ -308,7 +333,7 @@ async function agentLoop_pddl(){
                         pddlPlan=undefined;
                         while(pddlPlan==undefined)
                         {
-                            pddlPlan = await generatePlanWithPddl(parcels, otherAgents, MAP, BFS_toExplore[BFS_toExplore.length-1], agent, "opp");
+                            pddlPlan = await generatePlanWithPddl(parcels, otherAgents, MAP, DEL_CELLS[0], agent, "opp");
                         }
                         for (let action of pddlPlan) 
                             {
