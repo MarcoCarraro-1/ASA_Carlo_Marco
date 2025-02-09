@@ -2,6 +2,8 @@ import fetch from 'node-fetch' // import fetch from 'node-fetch';
 
 const HOST = process.env.PAAS_HOST || 'https://solver.planning.domains:5001';
 const PATH = process.env.PAAS_PATH || '/package/dual-bfws-ffparser/solve';
+//const HOST = 'http://localhost:5000';
+//const PATH = '/solve';
 
 /**
  * @typedef { { parallel: boolean, action: string, args: string [] } } pddlPlanStep
@@ -14,7 +16,7 @@ const PATH = process.env.PAAS_PATH || '/package/dual-bfws-ffparser/solve';
  * @returns { Promise < pddlPlanStep [] > }
  */
 export default async function onlineSolver (pddlDomain, pddlProblem) {
-
+    console.log("Hello");
     var responseCheckUrl = await postRequest(pddlDomain, pddlProblem);
 
     var json = await getResult(responseCheckUrl);
